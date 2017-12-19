@@ -1,0 +1,50 @@
+{
+  "name": "ng-fone",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "transpile": "ngc",
+    "package": "rollup -c",
+    "minify": "uglifyjs dist/bundles/amazing.umd.js --screw-ie8 --compress --mangle --comments --output dist/bundles/amazing.umd.min.js",
+    "build": "npm run transpile && npm run package && npm run minify"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@angular/common": "5.0.3",
+    "@angular/core": "5.0.3",
+    "@angular/forms": "5.0.3",
+    "@angular/platform-browser": "5.0.3",
+    "@angular/platform-browser-dynamic": "^5.0.3",
+    "@ionic-native/core": "^4.5.2",
+    "@ionic-native/facebook": "^4.5.2",
+    "@ionic-native/google-plus": "^4.5.2",
+    "@ionic-native/network": "^4.5.2",
+    "@ionic-native/splash-screen": "^4.5.2",
+    "@ionic-native/status-bar": "^4.5.2",
+    "@ionic/storage": "^2.1.3",
+    "@ngx-translate/core": "^9.0.2",
+    "@ngx-translate/http-loader": "2.0.0",
+    "@types/ionic": "0.0.35",
+    "@types/lodash": "4.14.91",
+    "@types/sha1": "^1.1.1",
+    "angular4-social-login": "^1.1.0",
+    "angularfire2": "^5.0.0-rc.4",
+    "firebase": "^4.8.1",
+    "imgcache.js": "^1.1.1",
+    "ionic-angular": "3.9.2",
+    "js-sha1": "^0.5.0",
+    "lodash": "4.17.4",
+    "moment": "^2.20.1",
+    "rxjs": "5.5.2",
+    "zone.js": "0.8.18"
+  },
+  "devDependencies": {
+    "@angular/compiler": "5.0.3",
+    "@angular/compiler-cli": "5.0.3",
+    "rollup": "0.52.2",
+    "typescript": "2.4.2",
+    "uglify-js": "3.2.2"
+  }
+}
