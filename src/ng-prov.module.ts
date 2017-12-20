@@ -66,7 +66,7 @@ export const WIDGET = [
 import { Network } from '@ionic-native/network';
 
 import { IonicStorageModule } from '@ionic/storage';
-import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
+import { TranslateModule, TranslateLoader,TranslatePipe } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { HttpClientModule, HttpClient } from '@angular/common/http';
 
@@ -91,7 +91,8 @@ import { AngularFireAuthModule } from 'angularfire2/auth';
         APP_PIPES,
         WIDGET,
         ImageCache,
-        ImageCacheBackground
+        ImageCacheBackground,
+        TranslateModule
     ],
     imports: [
         BrowserModule,

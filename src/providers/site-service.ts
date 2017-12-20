@@ -870,6 +870,9 @@ export class SiteService{
         resolve(0);
       })
     });
-    
+  }
+
+  langTh(){
+    this.translate.use('th');
   }
 }
