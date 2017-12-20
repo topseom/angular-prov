@@ -1,0 +1,26 @@
+{
+  "name": "ng-prov",
+  "version": "0.0.31",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "lodash": "4.17.4",
+    "moment": "2.20.1",
+    "@ngx-translate/core": "9.0.2",
+    "@ngx-translate/http-loader": "2.0.0",
+    "@ionic-native/facebook":"4.5.2",
+    "@ionic-native/google-plus":"4.5.2",
+    "@ionic-native/network":"4.5.2",
+    "imgcache.js": "1.1.1",
+    "firebase": "4.8.0",
+    "angularfire2": "5.0.0-rc.4",
+    "angular4-social-login": "1.1.0",
+    "js-sha1": "0.5.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

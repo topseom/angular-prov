@@ -28,7 +28,7 @@ import * as ImgCache from 'imgcache.js';
 
 //import { AngularFireDatabase } from 'angularfire2/database';
 
-import { App } from '../config/app';
+import { App } from '../../config/app';
 import { textInternetConnectOffline } from './interface';
 let setting = App;
 let demo_mobile = setting.platform == "mobile" && setting.demo;
@@ -845,14 +845,31 @@ export class SiteService{
   }
   anfire(){
     //console.log(firebase);
+
     firebase.database().ref().child('test').once('value').then(snap=>{
       console.log(snap.val());
     });
+
+    //console.log(this.af);
   }
   testObject(){
     // let obj = this.af.object('test').valueChanges();
     // obj.subscribe((data)=>{
     //   console.log(data);
     // });
+  }
+  imageInit(){
+    return new Promise((resolve,reject)=>{
+      ImgCache.init(function(){
+        
+        console.log("success!");
+        resolve(1);
+      },function(){
+        
+        console.log("fail!");
+        resolve(0);
+      })
+    });
+    
   }
 }

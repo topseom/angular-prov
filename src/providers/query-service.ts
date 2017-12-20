@@ -12,7 +12,7 @@ const moment = tsmoment;
 import * as _ from 'lodash';
 
 import { Database,dbFirebase,dbMysql,table,textInternetConnectOffline } from './interface';
-import { App } from '../config/app';
+import { App } from '../../config/app';
 let setting = App;
 
 @Injectable()
