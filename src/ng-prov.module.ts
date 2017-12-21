@@ -78,6 +78,24 @@ export function createTranslateLoader(http: HttpClient) {
 }
 
 
+import { SocialLoginModule } from "angular4-social-login";
+import { AuthServiceConfig } from "angular4-social-login";
+//import { GoogleLoginProvider, FacebookLoginProvider } from "angular4-social-login";
+
+export const config = new AuthServiceConfig([
+  // {
+  //   id: GoogleLoginProvider.PROVIDER_ID,
+  //   provider: new GoogleLoginProvider(setting[setting['app']].social_auth.web.google)
+  // },
+  // {
+  //   id: FacebookLoginProvider.PROVIDER_ID,
+  //   provider: new FacebookLoginProvider(setting[setting['app']].social_auth.web.facebook)
+  // }
+]);
+
+export function provideConfig() {
+  return config;
+}
 
 import { AngularFireModule } from 'angularfire2';
 import { AngularFireDatabaseModule } from 'angularfire2/database';
@@ -101,6 +119,7 @@ import { AngularFireAuthModule } from 'angularfire2/auth';
     imports: [
         BrowserModule,
         HttpClientModule,
+        SocialLoginModule,
         TranslateModule.forRoot({
             loader: {
               provide: TranslateLoader,
@@ -138,7 +157,8 @@ export class NgProvModule{
               DataService,
               Network,
               Facebook,
-              GooglePlus
+              GooglePlus,
+              {provide:AuthServiceConfig,useFactory:provideConfig}
             ]
         };
     }
