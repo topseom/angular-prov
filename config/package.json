@@ -1,11 +1,14 @@
 {
   "name": "ng-prov",
-  "version": "0.0.43",
+  "version": "0.0.58",
   "description": "",
   "main": "index.js",
   "dependencies": {
     "lodash": "4.17.4",
     "moment": "2.20.1",
+    "ngx-pagination": "3.0.3",
+    "@ionic-native/splash-screen": "4.5.2",
+    "@ionic-native/status-bar": "4.5.2",
     "@ngx-translate/core": "9.0.2",
     "@ngx-translate/http-loader": "2.0.0",
     "@ionic-native/facebook":"4.5.2",
