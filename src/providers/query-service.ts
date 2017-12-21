@@ -1,4 +1,4 @@
-import {Injectable} from "@angular/core";
+import {Injectable,Inject} from "@angular/core";
 import { Network } from '@ionic-native/network';
 import {AngularFireDatabase} from 'angularfire2/database';
 import {AlertController,LoadingController} from 'ionic-angular';
@@ -24,7 +24,9 @@ export class QueryService {
 
   
 
-  constructor(private network: Network,private http: HttpClient,public _site:SiteService,public af: AngularFireDatabase, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
+  constructor(@Inject('config') private config:any,private network: Network,private http: HttpClient,public _site:SiteService,public af: AngularFireDatabase, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
+    setting[setting.app].database = config.database?config.database:setting[setting.app].database;
+    console.log("configDB",setting[setting.app].database);
     //console.log("Db",this.getDatabase());
     //console.log("BaseUrl",this.getBaseUrl());
   }

@@ -1,4 +1,4 @@
-import {Injectable} from "@angular/core";
+import {Injectable,Inject} from "@angular/core";
 import {Storage} from '@ionic/storage';
 import { HttpClient } from '@angular/common/http';
 import { Network } from '@ionic-native/network';
@@ -9,14 +9,14 @@ import * as _ from 'lodash';
 import * as tsfirebase from 'firebase';
 const firebase = tsfirebase;
 
-firebase.initializeApp({
-  apiKey: "AIzaSyCYIxQwZTTbTjbY2Nmzom0DS_gLec3K6rs",
-  authDomain: "main-f50e4.firebaseapp.com",
-  databaseURL: "https://main-f50e4.firebaseio.com",
-  projectId: "main-f50e4",
-  storageBucket: "main-f50e4.appspot.com",
-  messagingSenderId: "229358120035"
-});
+// firebase.initializeApp({
+//   apiKey: "AIzaSyCYIxQwZTTbTjbY2Nmzom0DS_gLec3K6rs",
+//   authDomain: "main-f50e4.firebaseapp.com",
+//   databaseURL: "https://main-f50e4.firebaseio.com",
+//   projectId: "main-f50e4",
+//   storageBucket: "main-f50e4.appspot.com",
+//   messagingSenderId: "229358120035"
+// });
 
 import { Platform } from 'ionic-angular';
 import { StatusBar } from '@ionic-native/status-bar';
@@ -31,7 +31,6 @@ import * as ImgCache from 'imgcache.js';
 import { App } from '../../config/app';
 import { textInternetConnectOffline } from './interface';
 let setting = App;
-let demo_mobile = setting.platform == "mobile" && setting.demo;
 
 export interface SiteArray{
   site: string;
@@ -71,6 +70,7 @@ export class SiteService{
   localCheckTable = "_checkTable";
   tableRef = "table/";
 
+  demo_mobile = false;
 
   textLoadingCheckDatabase = "check database .."; 
   textLoadingSiteRef ="Loading ...<br>(Ref)";
@@ -79,7 +79,14 @@ export class SiteService{
   textAlertRemove = 'Do You Want to Remove This Site?!';
   textAlertRemoveLastOne = 'Can not Delete this site because site must at least one!';
   textErrorConnect = "Can't Connect Database";
-  constructor(private network: Network,public translate: TranslateService,public platform: Platform,public statusBar: StatusBar,public splashScreen: SplashScreen,private http: HttpClient,public storage: Storage,public toastCtrl:ToastController,public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
+  constructor(@Inject('config') private config:any,private network: Network,public translate: TranslateService,public platform: Platform,public statusBar: StatusBar,public splashScreen: SplashScreen,private http: HttpClient,public storage: Storage,public toastCtrl:ToastController,public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
+    setting.demo = config.demo === false?config.demo:setting.demo;
+    setting.platform = config.platform?config.platform:setting.platform;
+    this.demo_mobile = setting.platform == "mobile" && setting.demo;
+  }
+
+  showConfig(){
+    console.log(this.config);
   }
 
   showList(){
@@ -156,7 +163,7 @@ export class SiteService{
 
       return new Promise<CallbackSetRoot>((resolve,reject)=>{
         let callbackRoot = new CallbackSetRoot();
-        if(demo_mobile){
+        if(this.demo_mobile){
           config.siteArray = null;
           config.site = null;
           callbackRoot.demo = true;
@@ -295,7 +302,7 @@ export class SiteService{
   }
   getConfigApp(){
     return new Promise<any>((resolve,reject) => {
-        resolve(App);
+        resolve(this.config?this.config:App);
     });
   }
   

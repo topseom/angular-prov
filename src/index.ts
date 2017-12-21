@@ -7,3 +7,4 @@ export { SiteService } from './providers/site-service';
 export { StorageService } from './providers/storage-service';
 export { UpdateService } from './providers/update-service';
 export { NgProvModule } from './ng-prov.module';
+export { table } from './providers/interface';

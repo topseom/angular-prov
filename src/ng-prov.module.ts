@@ -1,5 +1,5 @@
 import { BrowserModule } from '@angular/platform-browser';
-import { NgModule, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { NgModule, CUSTOM_ELEMENTS_SCHEMA,ModuleWithProviders  } from '@angular/core';
 
 import { Column } from './pipes/pipes';
 import { Recycle } from './pipes/pipes';
@@ -75,6 +75,7 @@ export function createTranslateLoader(http: HttpClient) {
 }
 
 
+
 import { AngularFireModule } from 'angularfire2';
 import { AngularFireDatabaseModule } from 'angularfire2/database';
 import { AngularFirestoreModule } from 'angularfire2/firestore';
@@ -116,18 +117,31 @@ import { AngularFireAuthModule } from 'angularfire2/auth';
         AngularFireAuthModule,
         IonicStorageModule.forRoot()
     ],
-    schemas:[CUSTOM_ELEMENTS_SCHEMA],
-    providers:[
-        SiteService,
-        AuthService,
-        StorageService,
-        QueryService,
-        UpdateService,
-        DeleteService,
-        InsertService,
-        DataService,
-        Network
-    ]
+    schemas:[CUSTOM_ELEMENTS_SCHEMA]
 })
-
-export class NgProvModule{}
+export class NgProvModule{
+    static forRoot(config:Config): ModuleWithProviders {
+        return {
+          ngModule: NgProvModule,
+          providers: [
+              {provide: 'config', useValue: config},
+              SiteService,
+              AuthService,
+              StorageService,
+              QueryService,
+              UpdateService,
+              DeleteService,
+              InsertService,
+              DataService,
+              Network
+            ]
+        };
+    }
+}
+export interface Config{
+    app:string,
+    database:string,
+    platform:string,
+    demo?:boolean,
+    offline?:boolean
+}  
