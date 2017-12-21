@@ -13,6 +13,7 @@ export class WidgetClock{
 	constructor(){
 		this.time();
 	}
+	
 	time(){
 	  	this.date = moment().format("ddd, MMM DD")
 	  	this.startClock();

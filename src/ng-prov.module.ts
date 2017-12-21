@@ -77,6 +77,7 @@ export function createTranslateLoader(http: HttpClient) {
   return new TranslateHttpLoader(http, './assets/i18n/', '.json');
 }
 
+import { NgxPaginationModule } from 'ngx-pagination';
 
 import { SocialLoginModule } from "angular4-social-login";
 import { AuthServiceConfig } from "angular4-social-login";
@@ -102,6 +103,11 @@ import { AngularFireDatabaseModule } from 'angularfire2/database';
 import { AngularFirestoreModule } from 'angularfire2/firestore';
 import { AngularFireAuthModule } from 'angularfire2/auth';
 
+
+import { SplashScreen } from '@ionic-native/splash-screen';
+import { StatusBar } from '@ionic-native/status-bar';
+
+
 @NgModule({
     declarations:[
         APP_PIPES,
@@ -114,12 +120,17 @@ import { AngularFireAuthModule } from 'angularfire2/auth';
         WIDGET,
         ImageCache,
         ImageCacheBackground,
-        TranslateModule
+        TranslateModule,
+        NgxPaginationModule
+    ],
+    entryComponents:[
+        WIDGET
     ],
     imports: [
         BrowserModule,
         HttpClientModule,
         SocialLoginModule,
+        NgxPaginationModule,
         TranslateModule.forRoot({
             loader: {
               provide: TranslateLoader,
@@ -156,6 +167,8 @@ export class NgProvModule{
               InsertService,
               DataService,
               Network,
+              SplashScreen,
+              StatusBar,
               Facebook,
               GooglePlus,
               {provide:AuthServiceConfig,useFactory:provideConfig}
