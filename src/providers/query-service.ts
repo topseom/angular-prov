@@ -1,6 +1,7 @@
 import {Injectable,Inject} from "@angular/core";
 import { Network } from '@ionic-native/network';
 import {AngularFireDatabase} from 'angularfire2/database';
+import {AngularFirestore} from 'angularfire2/firestore';
 import {AlertController,LoadingController} from 'ionic-angular';
 import { HttpClient } from '@angular/common/http';
 import {SiteService} from './site-service';
@@ -24,7 +25,7 @@ export class QueryService {
 
   
 
-  constructor(@Inject('config') private config:any,private network: Network,private http: HttpClient,public _site:SiteService,public af: AngularFireDatabase, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
+  constructor(@Inject('config') private config:any,private network: Network,private http: HttpClient,public _site:SiteService,public af: AngularFireDatabase,public afs:AngularFirestore, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
     setting[setting.app].database = config.database?config.database:setting[setting.app].database;
     console.log("configDB",setting[setting.app].database);
     //console.log("Db",this.getDatabase());
@@ -236,6 +237,119 @@ export class QueryService {
         }
     });
   }
+
+  //Firestore
+  firestore(option){
+    return new Promise<any>((resolve, reject) => {
+      this._site.getSite().then(site=>{
+        let withoutSite = option.withoutSite || false;
+        if(site || withoutSite){
+          let realtime = option.realtime || false; 
+          let pagination = option.pagination || false;
+          if(realtime){
+            resolve(this.firestoreRealtime(option,site));
+          }else{
+            resolve(this.firebaseOnce(option,site));
+          }
+        }
+      });
+    });
+  }
+
+  firestoreRealtime(option,site){
+    return new Promise<any>((resolve, reject) => {
+      let loading = option.loading || false;
+      let limit = option.limit || false;
+      let orderBy = option.orderBy || false;
+      let table = option.table || false;
+     
+      if(table){
+        let query;
+        if(orderBy && limit){
+          query = this.afs.collection('/'+site+'/'+table,res=>res.where(orderBy.type,"==",orderBy.equal).limit(limit)).valueChanges();
+        }else if(!orderBy && limit){
+          query = this.afs.collection('/'+site+'/'+table,res=>res.limit(limit)).valueChanges();
+        }else if(orderBy && !limit){
+          query = this.afs.collection('/'+site+'/'+table,res=>res.where(orderBy.type,"==",orderBy.equal)).valueChanges();
+        }else{
+          query = this.af.list('/'+site+'/'+table).valueChanges();
+        }
+        resolve(query);
+      }else{
+        resolve(0);
+      }
+    });
+  }
+
+  firestoreOnce(option,site){
+    let loader = this.loadingCrtl.create();
+    return new Promise<any>((resolve, reject) => {
+        let type = option.type || false;
+
+        // Options Table
+        let loading = option.loading || false;
+        if(loading){
+          loader.present();
+        }
+
+        // Query
+        if(option.table){
+          this.firestoreOrderByAndLimit(option,site).then(query=>{
+            if(query){
+              (query as any).get().then(query=>{
+                if(query){
+                  let data = [];
+                  query.forEach(item=>{
+                    let array = item.data();
+                    data.push(array);
+                  });
+                  resolve(data);
+                }else{
+                  resolve(0);
+                }
+              });
+            }else{
+              resolve(0);
+            }
+          })
+        }else{
+          resolve(0);
+        }
+    });
+  }
+
+  firestoreOrderByAndLimit(option,site){
+    return new Promise<any>((resolve, reject) => {
+      let orderBy = option.orderBy || false;
+      let limit = option.limit || false;
+      let table = option.table || false;
+      let withoutSite = option.withoutSite || false;
+      let query;
+
+      if(withoutSite){
+        query = this.afs.firestore.collection(table);
+        //query = firebase.database().ref().child(table);
+      }else{
+        //let ref = firebase.database().ref().child(site);
+        //query = ref.child(table);
+        query = this.afs.firestore.collection(site+'/'+table);
+      }
+      
+      if(orderBy){
+            let c_orderBy = query.orderBy(orderBy.type);
+            if(orderBy.equal){
+              c_orderBy = c_orderBy.where(orderBy.type,"==",orderBy.equal);
+            }
+            query = (c_orderBy as any);
+      }
+      if(limit){
+            let c_limit = query.limit(limit);
+            query = (c_limit as any);
+      }
+      resolve(query);
+    });
+  }
+
   getConfigApp(){
     return new Promise<any>((resolve,reject) => {
             this._site.getConfigApp().then(callback=>{

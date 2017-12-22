@@ -29,6 +29,7 @@ export const table = {
     site_list:"SITE/site_list/"
 }
 export const dbFirebase = "firebase";
+export const dbFirestore = "firestore";
 export const dbMysql = "json";
 export interface FirebasePagination{
     lastkey?: string;
@@ -42,6 +43,20 @@ export interface FirebaseOrderBy{
 
 
 export interface FirebaseDb{
+    table:string;
+    type?:string;
+    pagination?:FirebasePagination;
+    realtime?:boolean;
+    limit?: number;
+    orderBy?:FirebaseOrderBy;
+    loading?: boolean;
+    cache?: boolean;
+    data?:any;
+    method?:string;
+    withoutSite?:boolean;
+}
+
+export interface FirestoreDb{
     table:string;
     type?:string;
     pagination?:FirebasePagination;

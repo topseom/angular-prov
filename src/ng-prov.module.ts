@@ -148,6 +148,7 @@ import { StatusBar } from '@ionic-native/status-bar';
         }),
         AngularFireDatabaseModule,
         AngularFireAuthModule,
+        AngularFirestoreModule.enablePersistence(),
         IonicStorageModule.forRoot()
     ],
     schemas:[CUSTOM_ELEMENTS_SCHEMA]
