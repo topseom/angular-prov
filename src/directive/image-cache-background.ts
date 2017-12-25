@@ -1,4 +1,4 @@
-import { Directive,Input,ElementRef,Renderer2 } from '@angular/core';
+import { Directive,Input,ElementRef,Renderer2,Inject } from '@angular/core';
 import ImgCache from 'imgcache.js';
 
 @Directive({
@@ -7,8 +7,9 @@ import ImgCache from 'imgcache.js';
 
 export class ImageCacheBackground{
 	@Input('path') src ='';
-  
-	constructor(public el: ElementRef,public renderer: Renderer2) {}
+	@Input('noImg') noImg = '';
+	
+	constructor(@Inject('config') private config:any,public el: ElementRef,public renderer: Renderer2) {}
 
   	ngOnInit() {
   		const nativeElement = this.el.nativeElement;
@@ -22,7 +23,8 @@ export class ImageCacheBackground{
     			}
     		});
     	}else{
-        render.setStyle(nativeElement, 'background-image', 'url("assets/img/global/no-image.png")');
+				this.noImg = this.noImg?this.noImg:this.config.noImg;
+        render.setStyle(nativeElement, 'background-image', 'url("'+this.noImg+'")');
     	}	
   	}
 

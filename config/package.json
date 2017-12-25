@@ -1,6 +1,6 @@
 {
   "name": "ng-prov",
-  "version": "0.0.60",
+  "version": "0.0.62",
   "description": "",
   "main": "index.js",
   "dependencies": {
