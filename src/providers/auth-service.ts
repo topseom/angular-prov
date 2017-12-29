@@ -22,6 +22,7 @@ import { GooglePlus } from '@ionic-native/google-plus';
 //import { App } from '../config/app';
 //let setting = App;
 
+import { dbFirebase,dbMysql,dbFirestore } from './interface';
 
 @Injectable()
 export class AuthService {
@@ -38,9 +39,6 @@ export class AuthService {
   textAlertWrongUserPassword = "Wrong User or Password";
   textAlertFilUserPassword = "Please Fill User or Password";
   
-  dbFirebase = "firebase";
-  dbMysql = "json";
-
   constructor(public _query:QueryService,public _site:SiteService,public af: AngularFireDatabase,public googleplus: GooglePlus,private fb: Facebook,public authSocial:AuthSocial,public toastCtrl:ToastController, public storage: StorageService, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
   }
   getUser(){
@@ -379,7 +377,7 @@ export class AuthService {
       if(user && password){
           let hash = sha1(user);
           this._query.auth_user({username:user,password:password,hash,load:true}).then(callback=>{
-            if(callback && this._query.getDatabase() == this.dbFirebase){
+            if(callback && this._query.getDatabase() == dbFirebase || this._query.getDatabase() == dbFirestore){
               let input = sha1(password+callback.salt);
               if(input === callback.password){
                   this.storage.setLocal(this.user,callback).then(callback=>{
@@ -395,7 +393,7 @@ export class AuthService {
                   });
                   alert.present();           
               }
-            }else if(callback && callback.user && this._query.getDatabase() == this.dbMysql){
+            }else if(callback && callback.user && this._query.getDatabase() == dbMysql){
               this.storage.setLocal(this.user,callback.user).then(callback=>{
                  resolve(1);
               })

@@ -79,7 +79,9 @@ export interface JsonDb{
 
 export interface Database {
     firebase?:FirebaseDb | boolean;
+    firestore?:FirestoreDb | boolean;
     json?:JsonDb | boolean;
+
 }
 
 export const textInternetConnectOffline = "Please connect the Internet";

@@ -179,8 +179,9 @@ export class NgProvModule{
 }
 export interface Config{
     app:string,
-    database:string,
-    platform:string,
+    database?:string,
+    platform?:string,
+    theme?:string,
     noImg?:string,
     demo?:boolean,
     offline?:boolean

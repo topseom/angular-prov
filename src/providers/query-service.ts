@@ -12,7 +12,7 @@ import * as tsmoment from 'moment';
 const moment = tsmoment;
 import * as _ from 'lodash';
 
-import { Database,dbFirebase,dbMysql,table,textInternetConnectOffline } from './interface';
+import { Database,dbFirebase,dbMysql,table,textInternetConnectOffline, dbFirestore } from './interface';
 import { App } from '../../config/app';
 let setting = App;
 
@@ -46,6 +46,7 @@ export class QueryService {
     return new Promise<any>((resolve, reject) => {
       let db = database;
       if(this.network.type && this.network.type == "none"){
+        console.log(1);
         resolve(0);
         let alert = this.alertCtrl.create({
                 title:"Attention",
@@ -57,10 +58,16 @@ export class QueryService {
         alert.present();
       }
       else if(db.firebase){
+        console.log(2);
         resolve(this.firebase(db.firebase));
+      }else if(db.firestore){
+        console.log(3);
+        resolve(this.firestore(db.firestore));
       }else if(db.json){
+        console.log(4);
         resolve(this.json(db.json));
       }else{
+        console.log(5);
         resolve(0);
       }
     });
@@ -249,7 +256,7 @@ export class QueryService {
           if(realtime){
             resolve(this.firestoreRealtime(option,site));
           }else{
-            resolve(this.firebaseOnce(option,site));
+            resolve(this.firestoreOnce(option,site));
           }
         }
       });
@@ -327,12 +334,12 @@ export class QueryService {
       let query;
 
       if(withoutSite){
-        query = this.afs.firestore.collection(table);
+        query = this.afs.firestore.collection(table).doc("lists");
         //query = firebase.database().ref().child(table);
       }else{
         //let ref = firebase.database().ref().child(site);
         //query = ref.child(table);
-        query = this.afs.firestore.collection(site+'/'+table);
+        query = this.afs.firestore.collection(site).doc(table).collection("lists");
       }
       
       if(orderBy){
@@ -1277,6 +1284,18 @@ export class QueryService {
           resolve(callback.data || null);
         });
       });
+    }else if(this.getDatabase() == dbFirestore){
+      return new Promise<any>((resolve,reject)=>{
+        let queryCate = {
+          firestore:{
+            table:table.listing_category,
+            loading:load
+          }
+        }
+        this.db(queryCate).then(callback=>{
+          resolve(callback || null);
+        });
+      });
     }
   }
   listing_home({load=false}){
@@ -1326,6 +1345,22 @@ export class QueryService {
           resolve(callback.data || null);
         });
       });
+    }else if(this.getDatabase() == dbFirestore){
+      return new Promise<any>((resolve,reject)=>{
+        let query = {
+          firestore:{
+            table:table.listing_single,
+            loading:load,
+            orderBy:{
+              type:"featured",
+              equal:"1"
+            }
+          }
+        }
+        this.db(query).then(callback=>{
+          resolve(callback || null);
+        });
+      });
     }
   }
   listing_list({load=false,id}){
@@ -1362,6 +1397,22 @@ export class QueryService {
           resolve(callback.data || null);
         });
       });
+    }else if(this.getDatabase() == dbFirestore){
+      return new Promise<any>((resolve,reject)=>{
+        let query = {
+          firestore:{
+            table:table.listing_single,
+            loading:true,
+            orderBy:{
+              type:"category",
+              equal:id
+            }
+          }
+        }
+        this.db(query).then(callback=>{
+          resolve(callback || null);
+        });
+      });
     }
   }
   listing_listAll({load=false}){
@@ -1392,6 +1443,18 @@ export class QueryService {
         }
         this.db(query).then(callback=>{
             resolve(callback.data || null);
+        });
+      });
+    }else if(this.getDatabase() == dbFirestore){
+      return new Promise<any>((resolve,reject)=>{
+        let query = {
+              firestore:{
+                table:table.listing_single,
+                loading:load
+              }
+        }
+        this.db(query).then(callback=>{
+            resolve(callback || null);
         });
       });
     }
@@ -2025,7 +2088,7 @@ export class QueryService {
               }
             });
       });
-    }else if(this.getDatabase() == dbFirebase){
+    }else if(this.getDatabase() == dbFirebase || this.getDatabase() == dbFirestore){
       return new Promise<any>((resolve,reject)=>{
         let query = {
           firebase:{
