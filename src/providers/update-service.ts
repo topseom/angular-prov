@@ -16,50 +16,40 @@ export class UpdateService{
 	constructor(public _query:QueryService,public _site:SiteService,public loadCtrl:LoadingController,public af:AngularFireDatabase){
 
 	}
-	db(database : Database){
-	    return new Promise<any>((resolve, reject) => {
-	      let db = database;
-	      if(db.firebase){
-	        //resolve(this.firebase(db.firebase));
-	      }else if(db.json){
-	        resolve(this.json(db.json));
-	      }else{
-	        resolve(0);
-	      }
-	    });
-  	}
+	async db(database : Database){
+			let db = database;
+		if(db.firebase){
+				//resolve(this.firebase(db.firebase));
+		}else if(db.json){
+				return await this.json(db.json);
+		}
+			return 0;
+	}
 
-	json(option){
-	    return new Promise<any>((resolve, reject) => {
-	      this._site.getSite().then(site=>{
-	        if(site && option.table && option.data){
-	          this._query.json_post(option,site).then(callback=>{
-	          	resolve(callback);
-	          });
-	        }else{
-	          resolve(0);
-	        }
-	      });
-	    });
-  	}
+	async json(option){
+			let site = await this._site.getSite();
+			if(site && option.table && option.data){
+			let callback = await this._query.json_post(option,site);
+			return callback;	
+			}
+			return 0;
+	}
 
-  	order_address_update(id,data,load=true){
-  		return new Promise((resolve,reject)=>{
-  				let insert:Database;
-  				data['id'] = id;
-  				insert = {
-		            json:{
-		              table:"json_update_address_firebase",
-		              loading:load,
-		              method:"post",
-		              data:{
-		                  data:data
-		              } 
-		           	}
-		        }
-		        this.db(insert).then(callback=>{
-		        	 resolve(callback);
-		        });
-  		});
-  	}
+	async order_address_update(id,data,load=true){
+			let insert:Database;
+			data['id'] = id;
+			insert = {
+						json:{
+							table:"json_update_address_firebase",
+							loading:load,
+							method:"post",
+							data:{
+									data:data
+							} 
+						}
+			}
+			let callback = await this.db(insert);
+			return callback; 		
+	}
+	
 }

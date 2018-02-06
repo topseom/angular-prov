@@ -31,6 +31,11 @@ export const table = {
 export const dbFirebase = "firebase";
 export const dbFirestore = "firestore";
 export const dbMysql = "json";
+
+export const baseUrl = "https://seven.co.th/";
+export const jsonController = "domains/application/";
+export const firebaseController = "domains/firebase/";
+
 export interface FirebasePagination{
     lastkey?: string;
     limit: number;

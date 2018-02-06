@@ -18,56 +18,42 @@ export class DeleteService{
 	constructor(public _query:QueryService,public _site:SiteService,public loadCtrl:LoadingController,public af:AngularFireDatabase){
 
 	}
-	db(database : Database){
-	    return new Promise<any>((resolve, reject) => {
-	      let db = database;
-	      if(db.firebase){
-	        //resolve(this.firebase(db.firebase));
-	      }else if(db.json){
-	        resolve(this.json(db.json));
-	      }else{
-	        resolve(0);
-	      }
-	    });
-  }
+	async db(database : Database){
+			let db = database;
+			if(db.firebase){
+				//resolve(this.firebase(db.firebase));
+			}else if(db.json){
+				return(this.json(db.json));
+			}
+			return 0;
+	}
 
-	json(option){
-	    return new Promise<any>((resolve, reject) => {
-	      this._site.getSite().then(site=>{
-	        if(site && option.table && option.method){
-	        	let method = option.method;
-	        	if(method == "get"){
-		            this._query.json_get(option,site).then(callback=>{
-	          			resolve(callback);
-	         		});
-		        }else if(method == "post"){
-		            //resolve(this.json_post(option,site));
-		        }else{
-		            resolve(0);
-		        } 
-	        }else{
-	          resolve(0);
-	        }
-	      });
-	    });
-  	}
+	async json(option){
+			let site = await this._site.getSite();
+			if(site && option.table && option.method){
+				let method = option.method;
+				if(method == "get"){
+					let callback = await	this._query.json_get(option,site);
+					return callback;
+				}else if(method == "post"){
+						//resolve(this.json_post(option,site));
+				}
+			}
+			return 0;
+	}
 
-  	order_address_delete(id,load=true){
-  		return new Promise((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_delete_address_firebase/"+id,
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-  	}
+	async order_address_delete(id,load=true){
+			let query = {
+				json:{
+					table:"json_delete_address_firebase/"+id,
+					method:"get",
+					loading:load,
+				}
+			}
+			let callback = await this.db(query);
+			if(callback){
+				return callback;
+			}
+			return 0;	
+	}
 }

@@ -12,22 +12,16 @@ import * as tsmoment from 'moment';
 const moment = tsmoment;
 import * as _ from 'lodash';
 
-import { Database,dbFirebase,dbMysql,table,textInternetConnectOffline, dbFirestore } from './interface';
+import { Database,dbFirebase,dbMysql,table,textInternetConnectOffline, dbFirestore,baseUrl,jsonController } from './interface';
 import { App } from '../../config/app';
 let setting = App;
 
 @Injectable()
 export class QueryService {
   
-  baseUrl = "https://seven.co.th/";
-  
-  jsonController = "domains/application/";
-
-  
-
   constructor(@Inject('config') private config:any,private network: Network,private http: HttpClient,public _site:SiteService,public af: AngularFireDatabase,public afs:AngularFirestore, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
     setting[setting.app].database = config.database?config.database:setting[setting.app].database;
-    console.log("configDB",setting[setting.app].database);
+    //console.log("configDB",setting[setting.app].database);
     //console.log("Db",this.getDatabase());
     //console.log("BaseUrl",this.getBaseUrl());
   }
@@ -39,349 +33,287 @@ export class QueryService {
   getBaseUrl(){
     //return setting[setting.app].baseUrl;
     //console.log("BASE URL",this.baseUrl);
-    return this.baseUrl;
+    return baseUrl;
   }
 
-  db(database : Database){
-    return new Promise<any>((resolve, reject) => {
-      let db = database;
-      if(this.network.type && this.network.type == "none"){
-        console.log(1);
-        resolve(0);
-        let alert = this.alertCtrl.create({
-                title:"Attention",
-                message:textInternetConnectOffline,
-                buttons:[{
-                  text:"ok"
-                }]
-        });
-        alert.present();
-      }
-      else if(db.firebase){
-        console.log(2);
-        resolve(this.firebase(db.firebase));
-      }else if(db.firestore){
-        console.log(3);
-        resolve(this.firestore(db.firestore));
-      }else if(db.json){
-        console.log(4);
-        resolve(this.json(db.json));
-      }else{
-        console.log(5);
-        resolve(0);
-      }
-    });
+  async db(database : Database){
+    let db = database;
+    if(this.network.type && this.network.type == "none"){
+      let alert = this.alertCtrl.create({
+        title:"Attention",
+        message:textInternetConnectOffline,
+        buttons:[{
+          text:"ok"
+        }]
+      });
+      alert.present();
+    }else if(db.firebase){
+      return await this.firebase(db.firebase);
+    }else if(db.firestore){
+      return await this.firestore(db.firestore);
+    }else if(db.json){
+      return await this.json(db.json);
+    }
+    return 0;
   }
+
   // Firebase
-  firebase(option){
-    return new Promise<any>((resolve, reject) => {
-        this._site.getSite().then(site=>{
-          let withoutSite = option.withoutSite || false;
-          if(site || withoutSite){
-            let realtime = option.realtime || false; 
-            let pagination = option.pagination || false;
-            if(realtime){
-              resolve(this.firebaseRealtime(option,site));
-            }else if(pagination){
-              resolve(this.firebasePagination(option,site));
-            }else{
-              resolve(this.firebaseOnce(option,site));
-            }
-          }
-        });
-    });
+  async firebase(option){
+    let site = await this._site.getSite();
+    let withoutSite = option.withoutSite || false;
+    if(site || withoutSite){
+      let realtime = option.realtime || false; 
+      let pagination = option.pagination || false;
+      if(realtime){
+        return await this.firebaseRealtime(option,site);
+      }else if(pagination){
+        return await this.firebasePagination(option,site);
+      }
+      return await this.firebaseOnce(option,site);
+    }
+    return 0;
   }
-  firebaseRealtime(option,site){
-    //let loader = this.loadingCrtl.create();
-    return new Promise<any>((resolve, reject) => {
 
-        let loading = option.loading || false;
-        let limit = option.limit || false;
-        let orderBy = option.orderBy || false;
-        let table = option.table || false;
-        if(loading){
-          //loader.present();
-        }
-        if(table){
-          let query;
-          if(orderBy && limit){
-            query = this.af.list('/'+site+'/'+table,res=>res.orderByChild(orderBy.type).equalTo(orderBy.equal).limitToFirst(limit));
-          }else if(!orderBy && limit){
-            query = this.af.list('/'+site+'/'+table,res=>res.limitToFirst(limit));
-          }else if(orderBy && !limit){
-            query = this.af.list('/'+site+'/'+table,res=>res.orderByChild(orderBy.type).equalTo(orderBy.equal));
-          }else{
-            query = this.af.list('/'+site+'/'+table);
-          }
-          resolve(query);
-        }else{
-          resolve(0);
-        }
-        
-        /*this.firebaseOrderByAndLimit(option,site).then(query=>{
-          resolve(query);
-        });*/
-    });
-  }
-  firebaseOnce(option,site){
-    let loader = this.loadingCrtl.create();
-    return new Promise<any>((resolve, reject) => {
-        let type = option.type || false;
-
-        // Options Table
-        let loading = option.loading || false;
-        if(loading){
-          loader.present();
-        }
-
-        // Query
-        if(option.table){
-          this.firebaseOrderByAndLimit(option,site).then(query=>{
-            if(query){
-              (query as any).once('value').then(snap=>{
-                  loader.dismiss().then(callback=>{
-                    if(snap.val() != null){
-                      if(type == "object"){
-                        resolve(snap.val());
-                      }else{
-                        let data = [];
-                        snap.forEach(item=>{
-                          let array = item.val();
-                          //array['key'] = item.key;
-                          data.push(array);
-                        });
-                        resolve({data:data});
-                      }
-                     
-                    }else{
-                      resolve(0);
-                    }
-                    })  
-              });
-            }else{
-              resolve(0);
-            }
-          })
-        }else{
-          resolve(0);
-        }
-    });
-  }
-  firebaseOrderByAndLimit(option,site){
-    return new Promise<any>((resolve, reject) => {
-      let orderBy = option.orderBy || false;
-      let limit = option.limit || false;
-      let table = option.table || false;
-      let withoutSite = option.withoutSite || false;
+  async firebaseRealtime(option,site){
+    let loading = option.loading || false;
+    let limit = option.limit || false;
+    let orderBy = option.orderBy || false;
+    let table = option.table || false;
+    if(loading){
+      //loader.present();
+    }
+    if(table){
       let query;
-
-      if(withoutSite){
-        query = firebase.database().ref().child(table);
+      if(orderBy && limit){
+        query = this.af.list('/'+site+'/'+table,res=>res.orderByChild(orderBy.type).equalTo(orderBy.equal).limitToFirst(limit));
+      }else if(!orderBy && limit){
+        query = this.af.list('/'+site+'/'+table,res=>res.limitToFirst(limit));
+      }else if(orderBy && !limit){
+        query = this.af.list('/'+site+'/'+table,res=>res.orderByChild(orderBy.type).equalTo(orderBy.equal));
       }else{
-        let ref = firebase.database().ref().child(site);
-        query = ref.child(table);
+        query = this.af.list('/'+site+'/'+table);
       }
-      
-      if(orderBy){
-            let c_orderBy = query.orderByChild(orderBy.type);
-            if(orderBy.equal){
-              c_orderBy = c_orderBy.equalTo(orderBy.equal);
-            }
-            query = (c_orderBy as any);
-      }
-      if(limit){
-            let c_limit = query.limitToFirst(limit);
-            query = (c_limit as any);
-      }
-      resolve(query);
-    });
+      return query;
+    }
+    return 0;
   }
-  firebasePagination(option,site){
-    let loader = this.loadingCrtl.create();
-    return new Promise<any>((resolve, reject) => {
-        // Options Table
-        let loading = option.loading || false;
-        let table = option.table || false;
-        let pagination = option.pagination;
-        if(loading){
-          loader.present();
-        }
 
-        // Query
-        if(table){
-           let ref = firebase.database().ref().child(site);
-           let query;
-           let page = false;
-           if(pagination.lastkey){
-              query = ref.child(table).orderByKey().startAt(pagination.lastkey).limitToFirst(pagination.limit+1);
-              page = true;
-           }else{
-              query = ref.child(table).orderByKey().limitToFirst(pagination.limit);
-           }
-           query.once('value').then(snap=>{
-              loader.dismiss().then(status=>{
-                if(snap.val() != null){
-                  let data = [];
-                  let lastKey;
-                  snap.forEach((item,index)=>{
-                    let array = item.val();
-                    array['key'] = item.key;
-                    data.push(array);
-                    lastKey = item.key;
-                  });
-                  if(page){
-                     data.shift();
-                  }
-                  resolve({data:data,lastkey:lastKey});
-                }else{
-                  resolve(0);
-                }
-              });
-           });
-       
-        }else{
-          resolve(0);
+  async firebaseOnce(option,site){
+    let loader = this.loadingCrtl.create();
+    let type = option.type || false;
+
+    // Options Table
+    let loading = option.loading || false;
+    if(loading){
+      loader.present();
+    }
+
+    // Query
+    if(option.table){
+      let query = await this.firebaseOrderByAndLimit(option,site);
+      if(query){
+        let snap = await (query as any).once('value');
+        await loader.dismiss();
+        if(snap.val() != null){
+          if(type == "object"){
+            return snap.val();
+          }else{
+            let data = [];
+            snap.forEach(item=>{
+              let array = item.val();
+              data.push(array);
+            });
+            return {data:data};
+          }
         }
-    });
+      }
+    }
+    return 0;
+  }
+
+  async firebaseOrderByAndLimit(option,site){
+    let orderBy = option.orderBy || false;
+    let limit = option.limit || false;
+    let table = option.table || false;
+    let withoutSite = option.withoutSite || false;
+    let query;
+
+    if(withoutSite){
+      query = firebase.database().ref().child(table);
+    }else{
+      let ref = firebase.database().ref().child(site);
+      query = ref.child(table);
+    }
+
+    if(orderBy){
+      let c_orderBy = query.orderByChild(orderBy.type);
+      if(orderBy.equal){
+        c_orderBy = c_orderBy.equalTo(orderBy.equal);
+      }
+      query = (c_orderBy as any);
+    }
+    if(limit){
+      let c_limit = query.limitToFirst(limit);
+      query = (c_limit as any);
+    }
+    return query;
+  }
+
+  async firebasePagination(option,site){
+    let loader = this.loadingCrtl.create();
+     // Options Table
+    let loading = option.loading || false;
+    let table = option.table || false;
+    let pagination = option.pagination;
+    if(loading){
+      loader.present();
+    }
+
+    // Query
+    if(table){
+      let ref = firebase.database().ref().child(site);
+      let query;
+      let page = false;
+      if(pagination.lastkey){
+         query = ref.child(table).orderByKey().startAt(pagination.lastkey).limitToFirst(pagination.limit+1);
+         page = true;
+      }else{
+         query = ref.child(table).orderByKey().limitToFirst(pagination.limit);
+      }
+      let snap = await query.once('value');
+      await loader.dismiss();
+      if(snap.val() != null){
+        let data = [];
+        let lastKey;
+        snap.forEach((item,index)=>{
+          let array = item.val();
+          array['key'] = item.key;
+          data.push(array);
+          lastKey = item.key;
+        });
+        if(page){
+           data.shift();
+        }
+        return {data:data,lastkey:lastKey};
+      }
+    }
+    return 0;
   }
 
   //Firestore
-  firestore(option){
-    return new Promise<any>((resolve, reject) => {
-      this._site.getSite().then(site=>{
-        let withoutSite = option.withoutSite || false;
-        if(site || withoutSite){
-          let realtime = option.realtime || false; 
-          let pagination = option.pagination || false;
-          if(realtime){
-            resolve(this.firestoreRealtime(option,site));
-          }else{
-            resolve(this.firestoreOnce(option,site));
-          }
-        }
-      });
-    });
-  }
-
-  firestoreRealtime(option,site){
-    return new Promise<any>((resolve, reject) => {
-      let loading = option.loading || false;
-      let limit = option.limit || false;
-      let orderBy = option.orderBy || false;
-      let table = option.table || false;
-     
-      if(table){
-        let query;
-        if(orderBy && limit){
-          query = this.afs.collection('/'+site+'/'+table,res=>res.where(orderBy.type,"==",orderBy.equal).limit(limit)).valueChanges();
-        }else if(!orderBy && limit){
-          query = this.afs.collection('/'+site+'/'+table,res=>res.limit(limit)).valueChanges();
-        }else if(orderBy && !limit){
-          query = this.afs.collection('/'+site+'/'+table,res=>res.where(orderBy.type,"==",orderBy.equal)).valueChanges();
-        }else{
-          query = this.af.list('/'+site+'/'+table).valueChanges();
-        }
-        resolve(query);
+  async firestore(option){
+    let site = await this._site.getSite();
+    let withoutSite = option.withoutSite || false;
+    if(site || withoutSite){
+      let realtime = option.realtime || false; 
+      let pagination = option.pagination || false;
+      if(realtime){
+        return await this.firestoreRealtime(option,site);
       }else{
-        resolve(0);
+        return await this.firestoreOnce(option,site);
       }
-    });
+    }
+    return 0;
   }
 
-  firestoreOnce(option,site){
-    let loader = this.loadingCrtl.create();
-    return new Promise<any>((resolve, reject) => {
-        let type = option.type || false;
-
-        // Options Table
-        let loading = option.loading || false;
-        if(loading){
-          loader.present();
-        }
-
-        // Query
-        if(option.table){
-          this.firestoreOrderByAndLimit(option,site).then(query=>{
-            if(query){
-              (query as any).get().then(query=>{
-                if(query){
-                  let data = [];
-                  query.forEach(item=>{
-                    let array = item.data();
-                    data.push(array);
-                  });
-                  resolve(data);
-                }else{
-                  resolve(0);
-                }
-              });
-            }else{
-              resolve(0);
-            }
-          })
-        }else{
-          resolve(0);
-        }
-    });
-  }
-
-  firestoreOrderByAndLimit(option,site){
-    return new Promise<any>((resolve, reject) => {
-      let orderBy = option.orderBy || false;
-      let limit = option.limit || false;
-      let table = option.table || false;
-      let withoutSite = option.withoutSite || false;
+  async firestoreRealtime(option,site){
+    let loading = option.loading || false;
+    let limit = option.limit || false;
+    let orderBy = option.orderBy || false;
+    let table = option.table || false;
+   
+    if(table){
       let query;
-
-      if(withoutSite){
-        query = this.afs.firestore.collection(table).doc("lists");
-        //query = firebase.database().ref().child(table);
+      if(orderBy && limit){
+        query = this.afs.collection('/'+site+'/'+table,res=>res.where(orderBy.type,"==",orderBy.equal).limit(limit)).valueChanges();
+      }else if(!orderBy && limit){
+        query = this.afs.collection('/'+site+'/'+table,res=>res.limit(limit)).valueChanges();
+      }else if(orderBy && !limit){
+        query = this.afs.collection('/'+site+'/'+table,res=>res.where(orderBy.type,"==",orderBy.equal)).valueChanges();
       }else{
-        //let ref = firebase.database().ref().child(site);
-        //query = ref.child(table);
-        query = this.afs.firestore.collection(site).doc(table).collection("lists");
+        query = this.af.list('/'+site+'/'+table).valueChanges();
       }
-      
-      if(orderBy){
-            let c_orderBy = query.orderBy(orderBy.type);
-            if(orderBy.equal){
-              c_orderBy = c_orderBy.where(orderBy.type,"==",orderBy.equal);
-            }
-            query = (c_orderBy as any);
-      }
-      if(limit){
-            let c_limit = query.limit(limit);
-            query = (c_limit as any);
-      }
-      resolve(query);
-    });
+      return query;
+    }
+    return 0;
   }
 
-  getConfigApp(){
-    return new Promise<any>((resolve,reject) => {
-            this._site.getConfigApp().then(callback=>{
-              resolve(callback);
-            })
-    });
-  }
-  build_tree(nodes){
-    return new Promise((resolve,reject)=>{
-      let map = {}, node, roots = [];
-      for (var i = 0; i < nodes.length; i += 1) {
-                 node = nodes[i];
-                 node['children'] = [];
-                 map[node.id] = i;
-                 if (node.parent !== 0) {
-                   if(nodes[map[node.parent]]){
-                     nodes[map[node.parent]]['children'].push(node);
-                   }
-                 }else{
-                   roots.push(node);
-                 }
+  async firestoreOnce(option,site){
+    let loader = this.loadingCrtl.create();
+    let type = option.type || false;
+    // Options Table
+    let loading = option.loading || false;
+    if(loading){
+      loader.present();
+    }
+    // Query
+    if(option.table){
+      let data = await this.firestoreOrderByAndLimit(option,site);
+      await loader.dismiss();
+      if(data){
+        let query = await (data as any).get();
+        if(query){
+          let data = [];
+          query.forEach(item=>{
+            let array = item.data();
+            data.push(array);
+          });
+          return data;
+        }
       }
-      resolve(roots);
-    });
+      return 0;
+    }
+    await loader.dismiss();
+    return 0;
   }
+
+  async firestoreOrderByAndLimit(option,site){
+    let orderBy = option.orderBy || false;
+    let limit = option.limit || false;
+    let table = option.table || false;
+    let withoutSite = option.withoutSite || false;
+    let query;
+
+    if(withoutSite){
+      query = this.afs.firestore.collection(table).doc("lists");
+    }else{
+      query = this.afs.firestore.collection(site).doc(table).collection("lists");
+    }
+    if(orderBy){ 
+      let c_orderBy = query;
+      if(orderBy.equal){
+        c_orderBy = c_orderBy.where(orderBy.type,"==",orderBy.equal);
+      }
+      query = (c_orderBy as any);
+    }
+    if(limit){
+      let c_limit = query.limit(limit);
+      query = (c_limit as any);
+    }
+    return query;
+  }
+
+  async getConfigApp(){
+    return await this._site.getConfigApp();
+  }
+
+  async build_tree(nodes){
+    let map = {}, node, roots = [];
+    for (var i = 0; i < nodes.length; i += 1) {
+               node = nodes[i];
+               node['children'] = [];
+               map[node.id] = i;
+               if (node.parent !== 0) {
+                 if(nodes[map[node.parent]]){
+                   nodes[map[node.parent]]['children'].push(node);
+                 }
+               }else{
+                 roots.push(node);
+               }
+    }
+    return roots;
+  }
+
   unflatten(arr) {
     var tree = [],
         mappedArr = {},
@@ -407,806 +339,670 @@ export class QueryService {
     }
     return tree;
   }
-  build_categories(table:string,load=false){
+
+  async build_categories(table:string,load=false){
     let loader = this.loadingCrtl.create();
     if(load){
       loader.present();
     }
-    return new Promise((resolve,reject)=>{
-      let query = {
-        firebase:{
-          table:table,
-          orderBy:{
-            type:"parent"
-          }
+    let query = {
+      firebase:{
+        table:table,
+        orderBy:{
+          type:"parent"
         }
       }
-      this.db(query).then(callback=>{
-        if(callback){
-          this.build_tree(callback.data).then(builded=>{
-            loader.dismiss().then(callback=>{
-              resolve(builded);
-            });
-          });
-        }else{
-          loader.dismiss().then(callback=>{
-            resolve(0);
-          });
-        }
-     
-      })
-      
-    });
-  }
-  pagination(array:Array<any>,data_all:Array<any>,current:number,limit:number){
-    return new Promise<Array <any>>((resolve,reject)=>{
-     
-        if(current == 1){
-          data_all = data_all.slice(0,limit);
-        }else{
-          let begin = current * limit;
-          let end = (current + 1) * limit;
-          data_all = data_all.slice(begin-1,end);
-        }
-        data_all.forEach(item=>{
-          array.push(item);
-        });
-        resolve(array);
-      
-    });
+    }
+    let callback = await this.db(query);
+    if(callback){
+      let builded = await this.build_tree(callback.data);
+      await loader.dismiss();
+      return builded;
+    }
+    await loader.dismiss();
+    return 0;
   }
 
+  async pagination(array:Array<any>,data_all:Array<any>,current:number,limit:number){
+    if(current == 1){
+      data_all = data_all.slice(0,limit);
+    }else{
+      let begin = current * limit;
+      let end = (current + 1) * limit;
+      data_all = data_all.slice(begin-1,end);
+    }
+    data_all.forEach(item=>{
+      array.push(item);
+    });
+    return array;
+  }
 
   //Json
-  json(option){
-    return new Promise<any>((resolve, reject) => {
-      this._site.getSite().then(site=>{
-        //console.log("SITE",site);
-        if(option.table && option.method){
-          let method = option.method;
-          if(method == "get"){
-            resolve(this.json_get(option,site));
-          }else if(method == "post"){
-            resolve(this.json_post(option,site));
-          }else{
-            resolve(0);
-          } 
-        }else{
-          resolve(0);
-        }
-      });
-    });
+  async json(option){
+    let site = await this._site.getSite();
+    if(option.table && option.method){
+      let method = option.method;
+      if(method == "get"){
+        return await this.json_get(option,site);
+      }else if(method == "post"){
+        return await this.json_post(option,site);
+      }
+    }
+    return 0;
+  }
+  
+  async json_get(option,site):Promise<any>{
+    let loader = this.loadingCrtl.create();
+    let table = option.table;
+    let loading = option.loading || false;
+    if(loading){
+        loader.present();
+    }
+    let callback = await this.http.get(this.getBaseUrl()+jsonController+table+'/'+site).toPromise();
+    await loader.dismiss();
+    return callback;
   }
 
-  json_get(option,site){
+  async json_post(option,site):Promise<any>{
     let loader = this.loadingCrtl.create();
-    return new Promise<any>((resolve, reject) => {
-      let table = option.table;
-      let loading = option.loading || false;
+    let table = option.table;
+    let loading = option.loading || false;
+    let data = option.data || false;
+    if(table && data){
+      data['site_reft'] = site;
       if(loading){
-          loader.present();
+        loader.present();
       }
-      this.http.get(this.getBaseUrl()+this.jsonController+table+'/'+site)
-      .subscribe(data => {
-        loader.dismiss().then(callback=>{
-          resolve(data);
-        });
-      },err=>{
-        loader.dismiss().then(callback=>{
-          resolve(0);
-        });
-      });
-    });
+      let body = JSON.stringify(data);
+      try{
+        let callback = await this.http.post(this.getBaseUrl()+jsonController+table+'/'+site,body).toPromise();
+        await loader.dismiss();
+        return callback;
+      }catch(e){
+        await loader.dismiss();
+        return 0;
+      }
+    }
+    return 0;
   }
 
-  json_post(option,site){
-    let loader = this.loadingCrtl.create();
-    return new Promise<any>((resolve, reject) => {
-      let table = option.table;
-      let loading = option.loading || false;
-      let data = option.data || false;
-      if(table && data){
-        data['site_reft'] = site;
-        //console.log("DATA BEFORE",data);
-        if(loading){
-          loader.present();
-        }
-        let body = JSON.stringify(data);
-        this.http.post(this.getBaseUrl()+this.jsonController+table+'/'+site,body)
-        .subscribe(data => {
-          loader.dismiss().then(callback=>{
-            resolve(data);
-          });
-        },err=>{
-          loader.dismiss().then(callback=>{
-            resolve(0);
-          });
-        });
-      }else{
-        resolve(0);
-      }
-    });
-  }
 
   //banner
-  banner_home({load=false}){
+  async banner_home({load=false}){
     if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject)=>{
-        let query = {
-          json:{
-            table:"json_banner_home",
-            method:"get",
-            loading:load,
-          }
+      let query = {
+        json:{
+          table:"json_banner_home",
+          method:"get",
+          loading:load,
         }
-        this.db(query).then(callback=>{
-          if(callback){
-            resolve(callback);
-          }else{
-            resolve(0);
-          }
-        });
-      });
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return callback;
+      }
+      return 0;
     }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.banner_single+"/mester-banner",
-            loading:load,
-            type:"object"
-          }
+      let query = {
+        firebase:{
+          table:table.banner_single+"/mester-banner",
+          loading:load,
+          type:"object"
         }
-        this.db(query).then(callback=>{
-          resolve(callback || null);
-        });
-      });
+      }
+      let callback = await this.db(query);
+      return(callback || null);
     }
-    
+    return 0;
   }
 
   //blog
-  blog_categories({load=false}){
+  async blog_categories({load=false}){
     if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_blog_categories",
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.blog_category,
-            loading:load
-          }
+      let query = {
+        json:{
+          table:"json_blog_categories",
+          method:"get",
+          loading:load,
         }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return callback;
+      }
+      return 0;
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.blog_category,
+          loading:load
+        }
+      }
+      let callback = await this.db(query);
+      return (callback.data || null);
+    }
+    return 0;
+  }
+
+  async blog_detail({load=false,id}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_blog_single_id/"+id,
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return callback;
+      }
+      return 0;
+
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.blog_list+"/"+id,
+          loading:load,
+          type:"object"
+        }
+      }
+      let callback = await this.db(query);
+      return (callback || null);
     }
   }
 
-  blog_detail({load=false,id}){
+  async blog_type({load=false,type}){
     if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_blog_single_id/"+id,
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
+      switch(type){
+        case "featured":
+          type = "featured_blog";
+          break;
+      }
+      let query = {
+        json:{
+          table:"json_blog_type/"+type,
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return callback;
+      }
+      return 0;
+
     }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject) =>{
-        let query = {
-          firebase:{
-            table:table.blog_list+"/"+id,
-            loading:load,
-            type:"object"
+      let query = {
+        firebase:{
+          table:table.blog_list,
+          orderBy:{
+            type:type,
+            equal:"1"
           }
         }
-        this.db(query).then(callback=>{
-           resolve(callback || null);
-        });
-      });
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
+    }
+    return 0;
+  }
+  async blog_listAll({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_blog_list",
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          loading:load,
+          table:table.blog_list
+        }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
     }
   }
-  blog_type({load=false,type}){
+  async blog_list({load=false,id}){
     if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-        switch(type){
-          case "featured":
-            type = "featured_blog";
-            break;
+      let query = {
+        json:{
+          table:"json_blog_list_categories/"+id,
+          method:"get",
+          loading:load,
         }
-        let query = {
-          json:{
-            table:"json_blog_type/"+type,
-            method:"get",
-            loading:load,
-          }
-        }
-        this.db(query).then(callback=>{
-          if(callback){
-            resolve(callback);
-          }else{
-            resolve(0);
-          }
-        });
-      });
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
     }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.blog_list,
-            orderBy:{
-              type:type,
-              equal:"1"
-            }
+      let query = {
+        firebase:{
+          loading:load,
+          table:table.blog_list,
+          orderBy:{
+            type:"category",
+            equal:id
           }
         }
-        this.db(query).then(callback=>{
-           resolve(callback.data || null);
-        });
-      });
-    }
-  }
-  blog_listAll({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_blog_list",
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            loading:load,
-            table:table.blog_list
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        })
-      });
-    }
-  }
-  blog_list({load=false,id}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_blog_list_categories/"+id,
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              //console.log("List",callback);
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            loading:load,
-            table:table.blog_list,
-            orderBy:{
-              type:"category",
-              equal:id
-            }
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        })
-      });
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
     }
   }
   
   //product
-  product_categories_list({product=[],cate_id=[]}){
-    return new Promise<any>((resolve,reject) => {
-      if(cate_id.length){
-         let filter = []
-         cate_id.forEach(cate=>{
-           product.forEach(pro=>{
-             if(pro.category && pro.category['category_'+cate.id]){
-               filter.push(pro);
-             }
-           });
-         });
-         if(filter.length){
-            filter = _.uniqBy(filter,"id");
-         }else{
-            filter = product;
-         }
-         resolve(filter);
+  async product_categories_list({product=[],cate_id=[]}){
+    if(cate_id.length){
+      let filter = []
+      cate_id.forEach(cate=>{
+        product.forEach(pro=>{
+          if(pro.category && pro.category['category_'+cate.id]){
+            filter.push(pro);
+          }
+        });
+      });
+      if(filter.length){
+         filter = _.uniqBy(filter,"id");
       }else{
-        resolve(product);
+         filter = product;
       }
-    });
-  }
-  product_filter_local({product,option,cate_id=""}){
-    return new Promise<any>((resolve,reject) => {
-      if(cate_id){
-        if(option){
-          let filter = [];
-          option.forEach(op=>{
-            let id = op.split(":")[1];
-            product.forEach(data=>{
-              if(data.category && data.category['category_'+cate_id] && data.filter && data.filter['filter_'+id]){
-                filter.push(data);
-              }
-            });
-          });
-          if(filter.length){
-            filter = _.uniqBy(filter,"id");
-          }else{
-            filter = product;
-          }
-          resolve(filter);
-        }else{
-          resolve(product);
-        }
-      }else{
-        if(option){
-          let filter = [];
-          option.forEach(op=>{
-            let id = op.split(":")[1];
-            product.forEach(data=>{
-              if(data.filter && data.filter['filter_'+id]){
-                filter.push(data);
-              }
-            });
-          });
-          if(filter.length){
-            filter = _.uniqBy(filter,"id");
-          }else{
-            filter = product;
-          }
-          resolve(filter);
-        }else{
-          resolve(product);
-        }
-        
-      }
-    });
-  }
-  product_filterPhp({load = false,cate_id="",option}){
-    return new Promise<any>((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_product_filter",
-              method:"post",
-              data:{
-                  option:option,
-                  cate_id:cate_id
-              },
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              //console.log("Callback",callback);
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-    });
+      return(filter);
+   }else{
+     return(product);
+   }
   }
 
-  product_single({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          json:{
-            table:"json_product_single",
-            method:"get",
-            loading:load,
-          }
-        }
-        this.db(query).then(callback=>{
-          if(callback){
-            resolve(callback);
-          }else{
-            resolve(0);
-          }
+  async product_filter_local({product,option,cate_id=""}){
+    if(cate_id){
+      if(option){
+        let filter = [];
+        option.forEach(op=>{
+          let id = op.split(":")[1];
+          product.forEach(data=>{
+            if(data.category && data.category['category_'+cate_id] && data.filter && data.filter['filter_'+id]){
+              filter.push(data);
+            }
+          });
         });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.product_single,
-            loading:load
-          }
+        if(filter.length){
+          filter = _.uniqBy(filter,"id");
+        }else{
+          filter = product;
         }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
+        return(filter);
+      }else{
+        return(product);
+      }
+    }else{
+      if(option){
+        let filter = [];
+        option.forEach(op=>{
+          let id = op.split(":")[1];
+          product.forEach(data=>{
+            if(data.filter && data.filter['filter_'+id]){
+              filter.push(data);
+            }
+          });
         });
-      });
+        if(filter.length){
+          filter = _.uniqBy(filter,"id");
+        }else{
+          filter = product;
+        }
+        return(filter);
+      }else{
+        return(product);
+      }
     }
   }
 
-  product_barcode({load=false}){
-    return new Promise<any>((resolve,reject)=>{
+  async product_filterPhp({load = false,cate_id="",option}){
+    let query = {
+      json:{
+        table:"json_product_filter",
+        method:"post",
+        data:{
+            option:option,
+            cate_id:cate_id
+        },
+        loading:load,
+      }
+    }
+    let callback = this.db(query);
+    if(callback){
+        return(callback);
+    }else{
+        return(0);
+    }
+  }
+
+  async product_single({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_product_single",
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+      
+    }else if(this.getDatabase() == dbFirebase){
       let query = {
         firebase:{
-          table:table.product_barcode,
+          table:table.product_single,
           loading:load
         }
       }
-      this.db(query).then(callback=>{
-        resolve(callback.data || null);
-      });
-    });
+      let callback = await this.db(query);
+      return(callback.data || null);
+    }
   }
 
-  product_filter({load=false}){
-    return new Promise<any>((resolve,reject)=>{
+  async product_barcode({load=false}){
+    let query = {
+      firebase:{
+        table:table.product_barcode,
+        loading:load
+      }
+    }
+    let callback = await this.db(query);
+    return(callback.data || null);
+  }
+
+  async product_filter({load=false}){
+    let query = {
+      firebase:{
+        table:table.product_filter,
+        loading:load,
+        type:"object",
+      }
+    }
+    let callback = await this.db(query);
+    return(callback || null);
+  }
+
+  async product_categoryAll({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_product_category",
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+    }else if(this.getDatabase() == dbFirebase){
+      let categories = {
+        firebase:{
+          table:table.product_category,
+          loading:load
+        }
+      }
+      let callback = await this.db(categories);
+      return(callback.data || null);
+    }
+    return 0;
+  }
+
+  async product_category({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_product_category",
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = this.db(query);
+      if(callback){
+        return(callback);
+      }
+      return 0;
+    }else if(this.getDatabase() == dbFirebase){
+      let categories = {
+        firebase:{
+          table:table.product_category,
+          loading:load
+        }
+      }
+      let callback = await this.db(categories);
+      if(callback.data){
+          callback.data = this.unflatten(callback.data);
+      }
+      return(callback.data || null);
+    }
+    
+  }
+  async product_category_filter_id({load=false,id}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_category_filter_id/"+id,
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+    }else if(this.getDatabase() == dbFirebase){
+      let categories = {
+        firebase:{
+          table:table.product_category,
+          loading:load,
+          orderBy:{
+                  type:"id",
+                  equal:id
+          }
+        }
+      }
+      let callback = await this.db(categories);
+      return(callback.data[0] || null);
+    }
+  }
+
+  async product_detail({load=false,id}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_product_single_id/"+id,
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+        //console.log("DETAIL",callback);
+      }else{
+        return(0);
+      }
+
+    }else if(this.getDatabase() == dbFirebase){
       let query = {
         firebase:{
-          table:table.product_filter,
-          loading:load,
+          table:table.product_single+"/"+id,
           type:"object",
+          loading:load,
         }
       }
-      this.db(query).then(callback=>{
-        resolve(callback || null);
-      });
-    });
-  }
-  product_categoryAll({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_product_category",
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let categories = {
-          firebase:{
-            table:table.product_category,
-            loading:load
-          }
-        }
-        this.db(categories).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
-    }
-  }
-  product_category({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_product_category",
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              //console.log("CATEEE",callback);
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let categories = {
-          firebase:{
-            table:table.product_category,
-            loading:load
-          }
-        }
-        this.db(categories).then(callback=>{
-          if(callback.data){
-            callback.data = this.unflatten(callback.data);
-          }
-          resolve(callback.data || null);
-        });
-      });
-    }
-    
-  }
-  product_category_filter_id({load=false,id}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise<any>((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_category_filter_id/"+id,
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              //console.log("Filter",callback);
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let categories = {
-          firebase:{
-            table:table.product_category,
-            loading:load,
-            orderBy:{
-                    type:"id",
-                    equal:id
-            }
-          }
-        }
-        this.db(categories).then(callback=>{
-          resolve(callback.data[0] || null);
-        });
-      });
-    }
-  }
-  product_detail({load=false,id}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise<any>((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_product_single_id/"+id,
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              resolve(callback);
-              //console.log("DETAIL",callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.product_single+"/"+id,
-            type:"object",
-            loading:load,
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback || null);
-        });
-      });
-    }
-    
-  }
-  product_list({load=false,id}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise<any>((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_product_category_id/"+id,
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.product_list,
-            loading:load,
-            orderBy:{
-                    type:"category/category_"+id,
-                    equal:true
-                   }
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
-    }
-  }
-  product_store({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise<any>((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_store",
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.product_store,
-            loading:load
-          }
-        }
-        this.db(query).then(callback=>{
-         resolve(callback.data || null);
-        });
-      });
+      let callback = await this.db(query);
+      return(callback || null);
     }
   }
 
-  product_listAll({load=false}){
+  async product_list({load=false,id}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_product_category_id/"+id,
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.product_list,
+          loading:load,
+          orderBy:{
+                  type:"category/category_"+id,
+                  equal:true
+                 }
+        }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
+    }
+  }
+  async product_store({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_store",
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.product_store,
+          loading:load
+        }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
+    }
+  }
+
+  async product_listAll({load=false}){
     //let local = "product_listAll";
     if(this.getDatabase() == dbMysql){
-      return new Promise<any>((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_product_list",
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-          let query = {
-            firebase:{
-              table:table.product_list,
-              loading:load
-            }
-          }
-          this.db(query).then(callback=>{
-           resolve(callback.data || null);
-          });
-      });
-    }
-    
-  }
-  product_listPagination({load=false,lastkey="",limit=0}){
-    return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.product_list,
-            loading:load,
-            pagination:{
-              limit:limit,
-              lastkey:lastkey
-            }
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback || null);
-        });
-    });
-  }
-  product_coupon({load=false,title}){
-    return new Promise<any>((resolve,reject)=>{
       let query = {
-            firebase:{
-              table:table.product_promotion,
-              loading:load,
-              orderBy:{
-                type:"conditions/coupon_title",
-                equal:title
-              }
-            }
+        json:{
+          table:"json_product_list",
+          method:"get",
+          loading:load,
+        }
       }
-      this.db(query).then(callback=>{
-        resolve(callback.data?callback.data[0]:null);
-      });
+      let callback = await this.db(query);
+      if(callback){
+        return callback;
+      }else{
+        return 0;
+      }
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.product_list,
+          loading:load
+        }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
+    }
+  }
 
-    });
-  }
-  product_couponUsed({load=false,id}){
-    return new Promise<any>((resolve,reject)=>{
-        let query = {
-              firebase:{
-                  table:table.order_single,
-                  orderBy:{
-                    type:"promotion_id/promotion_"+id,
-                    equal:true
-                  }
-              }
+  async product_listPagination({load=false,lastkey="",limit=0}){
+    let query = {
+      firebase:{
+        table:table.product_list,
+        loading:load,
+        pagination:{
+          limit:limit,
+          lastkey:lastkey
         }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });  
-    });
+      }
+    }
+    let callback = await this.db(query);
+    return (callback || null);
   }
-  product_couponTime({load=false,userId,id}){
-    return new Promise<any>((resolve,reject)=>{
-        let query = {
-                firebase:{
-                       table:table.order_single,
-                       orderBy:{
-                         type:"created_by_promo/"+userId+"_promotion_"+id,
-                         equal:true
-                       }
-                }
+
+  async product_coupon({load=false,title}){
+    let query = {
+      firebase:{
+        table:table.product_promotion,
+        loading:load,
+        orderBy:{
+          type:"conditions/coupon_title",
+          equal:title
         }
-        this.db(query).then(callback=>{
-          resolve(callback.data || []);
-        });
-    });
+      }
+    }
+    let callback = await this.db(query);
+    return(callback.data?callback.data[0]:null);
   }
-  product_type({type,load=false,limit = 0}){
+
+  async product_couponUsed({load=false,id}){
+    let query = {
+      firebase:{
+          table:table.order_single,
+          orderBy:{
+            type:"promotion_id/promotion_"+id,
+            equal:true
+          }
+      }
+    }
+    let callback = await this.db(query);
+    return(callback.data || null);
+  }
+
+  async product_couponTime({load=false,userId,id}){
+    let query = {
+      firebase:{
+             table:table.order_single,
+             orderBy:{
+               type:"created_by_promo/"+userId+"_promotion_"+id,
+               equal:true
+             }
+      }
+    }
+    let callback = await this.db(query);
+    return(callback.data || []);
+  }
+
+  async product_type({type,load=false,limit = 0}){
     if(this.getDatabase() == dbMysql){
       switch(type){
         case "new":
@@ -1216,893 +1012,747 @@ export class QueryService {
           type = "show_sale"
           break;
       }
-      return new Promise((resolve,reject) => {
-        let query = {
-          json:{
-            table:"json_product_type/"+type,
-            method:"get",
-            loading:load,
-          }
+      let query = {
+        json:{
+          table:"json_product_type/"+type,
+          method:"get",
+          loading:load,
         }
-        this.db(query).then(callback=>{
-          if(callback){
-            resolve(callback);
-          }else{
-            resolve(0);
-          }
-        });
-      });
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+
     }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-              table:table.product_list,
-              limit:limit,
-              loading:load,
-              orderBy:{
-                type:type,
-                equal:"1"
-              }
-          }
+      let query = {
+        firebase:{
+            table:table.product_list,
+            limit:limit,
+            loading:load,
+            orderBy:{
+              type:type,
+              equal:"1"
+            }
         }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        })
-      });
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
     }
   }
 
 
   //listing
-  listing_category({load=false}){
+  async listing_category({load=false}){
     if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-        let query = {
-          json:{
-            table:"json_listing_category",
-            method:"get",
-            loading:load,
-          }
-        }
-        this.db(query).then(callback=>{
-          if(callback){
-            resolve(callback);
-          }else{
-            resolve(0);
-          }
-        });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let queryCate = {
-          firebase:{
-            table:table.listing_category,
-            loading:load
-          }
-        }
-        this.db(queryCate).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
-    }else if(this.getDatabase() == dbFirestore){
-      return new Promise<any>((resolve,reject)=>{
-        let queryCate = {
-          firestore:{
-            table:table.listing_category,
-            loading:load
-          }
-        }
-        this.db(queryCate).then(callback=>{
-          resolve(callback || null);
-        });
-      });
-    }
-  }
-  listing_home({load=false}){
-    return new Promise<any>((resolve,reject)=>{
-      let query = {
-        firebase:{
-          table:"listing_home",
-          loading:load
-        }
-      }
-      this.db(query).then(callback=>{
-        resolve(callback.data || null);
-      });
-    });
-  }
-  listing_featured({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-        let query = {
-          json:{
-            table:"json_listing_featured",
-            method:"get",
-            loading:load,
-          }
-        }
-        this.db(query).then(callback=>{
-          if(callback){
-            resolve(callback);
-          }else{
-            resolve(0);
-          }
-        });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.listing_single,
-            loading:load,
-            orderBy:{
-              type:"featured",
-              equal:"1"
-            }
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
-    }else if(this.getDatabase() == dbFirestore){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firestore:{
-            table:table.listing_single,
-            loading:load,
-            orderBy:{
-              type:"featured",
-              equal:"1"
-            }
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback || null);
-        });
-      });
-    }
-  }
-  listing_list({load=false,id}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-        let query = {
-          json:{
-            table:"json_listing_list_category_id/"+id,
-            method:"get",
-            loading:load,
-          }
-        }
-        this.db(query).then(callback=>{
-          if(callback){
-            resolve(callback);
-          }else{
-            resolve(0);
-          }
-        });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.listing_single,
-            loading:true,
-            orderBy:{
-              type:"category",
-              equal:id
-            }
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
-    }else if(this.getDatabase() == dbFirestore){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firestore:{
-            table:table.listing_single,
-            loading:true,
-            orderBy:{
-              type:"category",
-              equal:id
-            }
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback || null);
-        });
-      });
-    }
-  }
-  listing_listAll({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-        let query = {
-          json:{
-            table:"json_listing_single",
-            method:"get",
-            loading:load,
-          }
-        }
-        this.db(query).then(callback=>{
-          if(callback){
-            resolve(callback);
-          }else{
-            resolve(0);
-          }
-        });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-              firebase:{
-                table:table.listing_single,
-                loading:load
-              }
-        }
-        this.db(query).then(callback=>{
-            resolve(callback.data || null);
-        });
-      });
-    }else if(this.getDatabase() == dbFirestore){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-              firestore:{
-                table:table.listing_single,
-                loading:load
-              }
-        }
-        this.db(query).then(callback=>{
-            resolve(callback || null);
-        });
-      });
-    }
-  }
-
-  //navigation
-  navigations({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_navigation",
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              //console.log("CALLBACK",callback);
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-            firebase:{
-              table:table.navigation+"/mobile/navigations",
-              loading:load,
-              type:"object"
-            }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback);
-        });
-      }); 
-    }
-  }
-
-  //gallery
-  gallery_category({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_gallery_category",
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              //console.log("Gallery Cate:",callback);
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.gallery_category,
-            loading:load
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        })
-      });
-    }
-  }
-  gallery_detail({load=false,id}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_gallery_single_id/"+id,
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              //console.log("Gallery List:",callback);
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.gallery_single+"/"+id,
-            loading:load,
-            type:"object"
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback || null);
-        })
-      });
-    }
-  }
-  gallery_list({load=false,id}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_gallery_category_list_id/"+id,
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              //console.log("Gallery List:",callback);
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.gallery_single,
-            loading:load,
-            orderBy:{
-              type:"category",
-              equal:id
-            }
-          }
-        }
-        this.db(query).then(callback=>{
-          //console.log("Firebase List:",callback.data);
-          resolve(callback.data || null);
-        });
-      });
-    }
-  }
-  gallery_single({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_gallery_single",
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.gallery_single,
-            loading:load,
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
-    }
-  }
-
-  //page
-  page_detail({load=false,slug,lang="en"}){
-      if(this.getDatabase() == dbMysql){
-        return new Promise<any>((resolve,reject) => {
-            let query = {
-              json:{
-                table:"json_page_single_id/"+slug,
-                method:"get",
-                loading:load,
-              }
-            }
-            this.db(query).then(callback=>{
-              if(callback){
-                resolve(callback);
-              }else{
-                resolve(0);
-              }
-            });
-        });
-      }else if(this.getDatabase() == dbFirebase){
-        return new Promise<any>((resolve,reject)=>{
-          let query = {
-            firebase:{
-              table:table.page_single+"/"+slug+"_"+lang,
-              loading:load,
-              type:"object"
-            }
-          }
-          this.db(query).then(callback=>{
-            resolve(callback || null);
-          });
-        });
-      }
-  }
-  page_single({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise<any>((resolve,reject) => {
-          let query = {
-            json:{
-              table:"json_page_single",
-              method:"get",
-              loading:load,
-            }
-          }
-          this.db(query).then(callback=>{
-            if(callback){
-              resolve(callback);
-            }else{
-              resolve(0);
-            }
-          });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.page_single,
-            loading:load
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
-    }
-  }
-
-  //portfolio
-  portfolio_categories({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-            let query = {
-              json:{
-                table:"json_portfolio_category",
-                method:"get",
-                loading:load,
-              }
-            }
-            this.db(query).then(callback=>{
-              if(callback){
-                resolve(callback);
-              }else{
-                resolve(0);
-              }
-            });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.portfolio_category,
-            loading:load
-          }
-
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
-    }
-  }
-  portfolio_detail({load=false,id}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-            let query = {
-              json:{
-                table:"json_portfolio_single_id/"+id,
-                method:"get",
-                loading:load,
-              }
-            }
-            this.db(query).then(callback=>{
-              if(callback){
-                //console.log("Portfolio List: ",callback);
-                resolve(callback);
-              }else{
-                resolve(0);
-              }
-            });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.portfolio_single,
-            loading:load,
-            orderBy:{
-              type:"category",
-              equal:id
-            }
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
-    }
-  }
-  portfolio_single({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-            let query = {
-              json:{
-                table:"json_portfolio_single",
-                method:"get",
-                loading:load
-              }
-            }
-            this.db(query).then(callback=>{
-              if(callback){
-                resolve(callback);
-              }else{
-                resolve(0);
-              }
-            });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.portfolio_single,
-            loading:load
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
-    }
-  }
-
-  //order
-  order_single({load=false}){
-    return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.order_single,
-            loading:load
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });
-    });
-  }
-  order_user({load=false}){
-    return new Promise<any>((resolve,reject)=>{
-      this._site.getUser().then(user=>{
-        if(user){
-          let query = {
-            firebase:{
-              table:table.order_single,
-              loading:load,
-              orderBy:{
-                  type:"created_id",
-                  equal: (user as any).id
-              }
-            }
-          }
-          this.db(query).then(callback=>{
-            resolve(callback.data || null);
-          });
-        }else{
-          resolve(0);
-        }
-      });
-    });
-  }
-  order_today({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise<any>((resolve,reject) => {
-            let query = {
-              json:{
-                table:"json_order_today",
-                method:"get",
-                loading:load,
-              }
-            }
-            this.db(query).then(callback=>{
-              if(callback){
-                resolve(callback);
-              }else{
-                resolve(0);
-              }
-            });
-      });
-    }
-    else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.order_single,
-            loading:load,
-            orderBy:{
-                type:"created",
-                //equal: "2017-03-24"
-                equal: moment().format('YYYY-MM-DD HH:mm:ss')
-            }
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
-    }
-    
-  }
-  order_address({load=false,id}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-            let query = {
-              json:{
-                table:"json_address_user/"+id,
-                method:"get",
-                loading:load
-              }
-            }
-            this.db(query).then(callback=>{
-              if(callback){
-                resolve(callback);
-              }else{
-                resolve(0);
-              }
-            });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.order_address,
-            loading:load,
-            orderBy:{
-                type:"created_by",
-                equal:id
-            }
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
-    }
-  }
-  order_gateway({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-            let query = {
-              json:{
-                table:"json_gateway",
-                method:"get",
-                loading:load
-              }
-            }
-            this.db(query).then(callback=>{
-              if(callback){
-                resolve(callback);
-              }else{
-                resolve(0);
-              }
-            });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.order_gateway,
-            loading:load
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
-    }
-  }
-  order_shipping({load=false}){
-    return new Promise<any>((resolve,reject)=>{
-      let query = {
-        firebase:{
-          table:table.order_shipping,
-          loading:load
-        }
-      }
-      this.db(query).then(callback=>{
-        resolve(callback.data || null);
-      });
-    });
-  }
-
-  //user
-  users_single({load=false}){
-    if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-            let query = {
-              json:{
-                table:"json_users",
-                method:"get",
-                loading:load,
-              }
-            }
-            this.db(query).then(callback=>{
-              if(callback){
-                resolve(callback);
-              }else{
-                resolve(0);
-              }
-            });
-      });
-    }else if(this.getDatabase() == dbFirebase){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.users_single,
-            loading:load
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback.data || null);
-        });
-      });
-    }
-  }
-
-  //stream
-  stream_signup({load=false}){
-    return new Promise<any>((resolve,reject)=>{
-      let query = {
-        firebase:{
-          table:table.stream_signup,
-          loading:load
-        }
-      }
-      this.db(query).then(callback=>{
-        resolve(callback.data || null);
-      });
-    });
-  }
-
-  //images
-  images({load=false}){
-    return new Promise<any>((resolve,reject)=>{
       let query = {
         json:{
-          table:"json_images",
+          table:"json_listing_category",
           method:"get",
           loading:load,
         }
       }
-      this.db(query).then(callback=>{
-        if(callback){
-          resolve(callback);
-        }else{
-          resolve(0);
+      let callback = await this.db(query);
+      if(callback){
+          return(callback);
+      }else{
+          return(0);
+      }
+
+    }else if(this.getDatabase() == dbFirebase){
+      let queryCate = {
+        firebase:{
+          table:table.listing_category,
+          loading:load
         }
-      });
-    });
+      }
+      let callback = await this.db(queryCate);
+      return(callback.data || null);
+
+    }else if(this.getDatabase() == dbFirestore){
+      let queryCate = {
+        firestore:{
+          table:table.listing_category,
+          loading:load
+        }
+      }
+      let callback = await this.db(queryCate);
+      return(callback || null);
+    }
+  }
+  async listing_home({load=false}){
+    let query = {
+      firebase:{
+        table:"listing_home",
+        loading:load
+      }
+    }
+    let callback = await this.db(query);
+    return(callback.data || null);
   }
 
-  //form
-  form_config({load=false}){
-    return new Promise<any>((resolve,reject)=>{
+  async listing_featured({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_listing_featured",
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      } 
+    }else if(this.getDatabase() == dbFirebase){
       let query = {
         firebase:{
-          table:table.form_config,
+          table:table.listing_single,
+          loading:load,
+          orderBy:{
+            type:"featured",
+            equal:"1"
+          }
+        }
+      }
+      let callback = await this.db(query);
+      return (callback.data || null);
+
+    }else if(this.getDatabase() == dbFirestore){
+      let query = {
+        firestore:{
+          table:table.listing_single,
+          loading:load,
+          orderBy:{
+            type:"featured",
+            equal:"1"
+          }
+        }
+      }
+      let callback = await this.db(query);
+      return(callback || null);
+    }
+  }
+  async listing_list({load=false,id}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_listing_list_category_id/"+id,
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.listing_single,
+          loading:load,
+          orderBy:{
+            type:"category",
+            equal:id
+          }
+        }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
+
+    }else if(this.getDatabase() == dbFirestore){
+      let query = {
+        firestore:{
+          table:table.listing_single,
+          loading:load,
+          orderBy:{
+            type:"category",
+            equal:id
+          }
+        }
+      }
+      let callback = await this.db(query);
+      return(callback || null);
+    }
+  }
+  async listing_listAll({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_listing_single",
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+       
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+            firebase:{
+              table:table.listing_single,
+              loading:load
+            }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
+    }else if(this.getDatabase() == dbFirestore){
+      let query = {
+            firestore:{
+              table:table.listing_single,
+              loading:load
+            }
+      }
+      let callback = await this.db(query);
+      return(callback || null);
+    }
+  }
+
+  //navigation
+  async navigations({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_navigation",
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+      
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+          firebase:{
+            table:table.navigation+"/mobile/navigations",
+            loading:load,
+            type:"object"
+          }
+      }
+      let callback = await this.db(query);
+      return(callback);
+    }
+  }
+
+  //gallery
+  async gallery_category({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_gallery_category",
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        //console.log("Gallery Cate:",callback);
+        return(callback);
+      }else{
+        return(0);
+      }
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.gallery_category,
+          loading:load
+        }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);  
+    }
+  }
+  async gallery_detail({load=false,id}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_gallery_single_id/"+id,
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+      
+      
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.gallery_single+"/"+id,
           loading:load,
           type:"object"
         }
       }
-      this.db(query).then(callback=>{
-        resolve(callback || null);
-      });
-    });
+      let callback = await this.db(query);
+      return(callback || null);
+    }
   }
-
-  //authen
-  auth_site({site,load=false}){
-    return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.site_list+site,
-            withoutSite:true,
-            loading:load,
-            type:"object"
-          }
-        }
-        this.db(query).then(callback=>{
-          resolve(callback || null);
-        });
-      });
-  }
-
-  auth_user({username,password,load=false,hash=""}){
+  async gallery_list({load=false,id}){
     if(this.getDatabase() == dbMysql){
-      return new Promise((resolve,reject) => {
-            let query = {
-              json:{
-                table:"json_login",
-                method:"post",
-                data:{
-                    username:username,
-                    password:password
-                },
-                loading:load,
-              }
-            }
-            this.db(query).then(callback=>{
-              if(callback){
-                resolve(callback);
-              }else{
-                resolve(0);
-              }
-            });
-      });
-    }else if(this.getDatabase() == dbFirebase || this.getDatabase() == dbFirestore){
-      return new Promise<any>((resolve,reject)=>{
-        let query = {
-          firebase:{
-            table:table.users_single+'/'+hash,
-            loading:load,
-            type:"object"
+      let query = {
+        json:{
+          table:"json_gallery_category_list_id/"+id,
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        //console.log("Gallery List:",callback);
+        return(callback);
+      }else{
+        return(0);
+      }
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.gallery_single,
+          loading:load,
+          orderBy:{
+            type:"category",
+            equal:id
           }
         }
-        this.db(query).then(callback=>{
-          resolve(callback || null);
-        });
-      });
+      }
+      let callback = await this.db(query);
+      return(callback.data || null); 
+    }
+  }
+  async gallery_single({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_gallery_single",
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.gallery_single,
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
     }
   }
 
+  //page
+  async page_detail({load=false,slug,lang="en"}){
+      if(this.getDatabase() == dbMysql){
+        let query = {
+          json:{
+            table:"json_page_single_id/"+slug,
+            method:"get",
+            loading:load,
+          }
+        }
+        let callback = await this.db(query);
+        if(callback){
+          return(callback);
+        }else{
+          return(0);
+        }
+      }else if(this.getDatabase() == dbFirebase){
+        let query = {
+          firebase:{
+            table:table.page_single+"/"+slug+"_"+lang,
+            loading:load,
+            type:"object"
+          }
+        }
+        let callback = await this.db(query);
+        return(callback || null);
+      }
+  }
+  async page_single({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_page_single",
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.page_single,
+          loading:load
+        }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
+    }
+  }
 
+  //portfolio
+  async portfolio_categories({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_portfolio_category",
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.portfolio_category,
+          loading:load
+        }
+
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
+    }
+  }
+  
+  async portfolio_detail({load=false,id}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_portfolio_single_id/"+id,
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        //console.log("Portfolio List: ",callback);
+        return(callback);
+      }else{
+        return(0);
+      }
+     
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.portfolio_single,
+          loading:load,
+          orderBy:{
+            type:"category",
+            equal:id
+          }
+        }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
+    }
+  }
+  async portfolio_single({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_portfolio_single",
+          method:"get",
+          loading:load
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.portfolio_single,
+          loading:load
+        }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
+    }
+  }
+
+  //order
+  async order_single({load=false}){
+    let query = {
+      firebase:{
+        table:table.order_single,
+        loading:load
+      }
+    }
+    let callback = await this.db(query);
+    return(callback.data || null);
+  }
+
+  async order_user({load=false}){
+    let user = await this._site.getUser();
+    if(user){
+      let query = {
+        firebase:{
+          table:table.order_single,
+          loading:load,
+          orderBy:{
+              type:"created_id",
+              equal: (user as any).id
+          }
+        }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
+    }else{
+      return(0);
+    }
+  }
+  async order_today({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_order_today",
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+    }
+    else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.order_single,
+          loading:load,
+          orderBy:{
+              type:"created",
+              //equal: "2017-03-24"
+              equal: moment().format('YYYY-MM-DD HH:mm:ss')
+          }
+        }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null); 
+    }
+    
+  }
+  async order_address({load=false,id}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_address_user/"+id,
+          method:"get",
+          loading:load
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.order_address,
+          loading:load,
+          orderBy:{
+              type:"created_by",
+              equal:id
+          }
+        }
+      }
+      let callback = await this.db(query);
+      return (callback.data || null);
+    }
+  }
+  async order_gateway({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_gateway",
+          method:"get",
+          loading:load
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+      
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.order_gateway,
+          loading:load
+        }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
+    }
+  }
+  async order_shipping({load=false}){
+    let query = {
+      firebase:{
+        table:table.order_shipping,
+        loading:load
+      }
+    }
+    let callback = await this.db(query);
+    return(callback.data || null);
+  }
+
+  //user
+  async users_single({load=false}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_users",
+          method:"get",
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+    }else if(this.getDatabase() == dbFirebase){
+      let query = {
+        firebase:{
+          table:table.users_single,
+          loading:load
+        }
+      }
+      let callback = await this.db(query);
+      return(callback.data || null);
+    }
+  }
+
+  //stream
+  async stream_signup({load=false}){
+    let query = {
+      firebase:{
+        table:table.stream_signup,
+        loading:load
+      }
+    }
+    let callback = await this.db(query);
+    return(callback.data || null);
+  }
+
+  //images
+  async images({load=false}){
+    let query = {
+      json:{
+        table:"json_images",
+        method:"get",
+        loading:load,
+      }
+    }
+    let callback = await this.db(query);
+    if(callback){
+      return(callback);
+    }else{
+      return(0);
+    }  
+  }
+
+  //form
+  async form_config({load=false}){
+    let query = {
+      firebase:{
+        table:table.form_config,
+        loading:load,
+        type:"object"
+      }
+    }
+    let callback = await this.db(query);
+    return(callback || null);
+  }
+
+  //authen
+  async auth_site({site,load=false}){
+    let query = {
+      firebase:{
+        table:table.site_list+site,
+        withoutSite:true,
+        loading:load,
+        type:"object"
+      }
+    }
+    let callback = await this.db(query);
+    return(callback || null);
+  }
+
+  async auth_user({username,password,load=false,hash=""}){
+    if(this.getDatabase() == dbMysql){
+      let query = {
+        json:{
+          table:"json_login",
+          method:"post",
+          data:{
+              username:username,
+              password:password
+          },
+          loading:load,
+        }
+      }
+      let callback = await this.db(query);
+      if(callback){
+        return(callback);
+      }else{
+        return(0);
+      }
+    }else if(this.getDatabase() == dbFirebase || this.getDatabase() == dbFirestore){
+      let query = {
+        firebase:{
+          table:table.users_single+'/'+hash,
+          loading:load,
+          type:"object"
+        }
+      }
+      let callback = await this.db(query);
+      return(callback || null);
+    }
+  }
+  
 }

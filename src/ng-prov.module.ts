@@ -79,24 +79,6 @@ export function createTranslateLoader(http: HttpClient) {
 
 import { NgxPaginationModule } from 'ngx-pagination';
 
-import { SocialLoginModule } from "angular4-social-login";
-import { AuthServiceConfig } from "angular4-social-login";
-//import { GoogleLoginProvider, FacebookLoginProvider } from "angular4-social-login";
-
-export const config = new AuthServiceConfig([
-  // {
-  //   id: GoogleLoginProvider.PROVIDER_ID,
-  //   provider: new GoogleLoginProvider(setting[setting['app']].social_auth.web.google)
-  // },
-  // {
-  //   id: FacebookLoginProvider.PROVIDER_ID,
-  //   provider: new FacebookLoginProvider(setting[setting['app']].social_auth.web.facebook)
-  // }
-]);
-
-export function provideConfig() {
-  return config;
-}
 
 import { AngularFireModule } from 'angularfire2';
 import { AngularFireDatabaseModule } from 'angularfire2/database';
@@ -129,7 +111,6 @@ import { StatusBar } from '@ionic-native/status-bar';
     imports: [
         BrowserModule,
         HttpClientModule,
-        SocialLoginModule,
         NgxPaginationModule,
         TranslateModule.forRoot({
             loader: {
@@ -171,8 +152,7 @@ export class NgProvModule{
               SplashScreen,
               StatusBar,
               Facebook,
-              GooglePlus,
-              {provide:AuthServiceConfig,useFactory:provideConfig}
+              GooglePlus
             ]
         };
     }
