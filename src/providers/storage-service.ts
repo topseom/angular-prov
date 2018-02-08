@@ -179,11 +179,11 @@ export class StorageService {
           // have image (image.icon_image.path)
           data = await this._query.navigations({});
           if(data && data.length > 0){
-            this.forImageChildren(data,"children",[]).then(async images=>{
-              images = images.map((img)=>img.icon_image && img.icon_image.path);
-              await _images.addImage(images);
-            });
+            let images = await this.forImageChildren(data,"children",[]);
+            images = images.map((img)=>img.icon_image && img.icon_image.path);
+            await _images.addImage(images);
           }
+          //console.log("callback data",data);
           return data;
 
         case table.page_single:
@@ -198,7 +198,7 @@ export class StorageService {
                 array.push(m[1]);
               }
               if(obj.slug == "customer-reference"){
-                console.log(array);
+                //console.log(array);
               }
               
               if(array.length > 0){
@@ -239,14 +239,16 @@ export class StorageService {
    
   }
 
-  async forImageChildren(array:Array<any>,key,result:Array<any>){
-    for(let data of array){
-      if(data[key] && data[key].length){
-        return await this.forImageChildren(data[key],key,result);
-      }
-      result.push(data);
-    }
-    return result;
+  forImageChildren(array:Array<any>,key,result:Array<any>){
+    return new Promise<any>((resolve,reject)=>{
+      array.forEach(data=>{
+        if(data[key] && data[key].length){
+          resolve(this.forImageChildren(data[key],key,result));
+        }
+        result.push(data)
+        resolve(result);
+      });
+    });
   }
 
   async forDataLoad(table,loader,list:object){
