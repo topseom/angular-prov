@@ -7,6 +7,8 @@ import {AlertController,LoadingController,ToastController} from 'ionic-angular';
 import 'rxjs/add/operator/take';
 import * as _ from 'lodash';
 import * as tsfirebase from 'firebase';
+import 'firebase/firestore';
+
 const firebase = tsfirebase;
 
 import { Platform } from 'ionic-angular';
@@ -17,7 +19,7 @@ import { TranslateService } from '@ngx-translate/core';
 import * as ImgCache from 'imgcache.js';
 
 import { App } from '../../config/app';
-import { textInternetConnectOffline,baseUrl,firebaseController } from './interface';
+import { textInternetConnectOffline,baseUrl,firebaseController,dbFirestore,dbFirebase } from './interface';
 let setting = App;
 
 export interface SiteArray{
@@ -70,6 +72,7 @@ export class SiteService{
   constructor(@Inject('config') private config:any,private network: Network,public translate: TranslateService,public platform: Platform,public statusBar: StatusBar,public splashScreen: SplashScreen,private http: HttpClient,public storage: Storage,public toastCtrl:ToastController,public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
     setting.demo = config.demo === false?config.demo:setting.demo;
     setting.platform = config.platform?config.platform:setting.platform;
+    setting[setting.app].database = config.database?config.database:setting[setting.app].database;
     this.demo_mobile = setting.platform == "mobile" && setting.demo;
   }
 
@@ -552,18 +555,27 @@ export class SiteService{
       }
       let site = await this.getSite();
       if(site){
-        let ref = firebase.database().ref().child(site);
-        try{
+        let theme;
+        let db = setting[setting.app].database;
+        if(db == dbFirebase){
+          let ref = firebase.database().ref().child(site);
           let snap = await ref.child('app_setting').once('value');
-          if(snap.val()){
+          theme = snap.val();
+        }else if(db == dbFirestore){
+          let ref = await firebase.firestore().collection(site+"/app_setting/lists").doc('0').get();
+          theme = ref.data();
+        }
+        
+        try{
+          if(theme){
             if(ImgCache.ready){
-              await ImgCache.cacheFile(snap.val().setting_logo?snap.val().setting_logo:false,async data=>{
+              await ImgCache.cacheFile(theme.setting_logo?theme.setting_logo:false,async data=>{
                 return 1;
               },async err=>{
                 return 1;
               });
             }
-            await this.setTheme(snap.val());
+            await this.setTheme(theme);
             await loading.dismiss();
             return 1;
           }
