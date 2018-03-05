@@ -21,9 +21,6 @@ export class QueryService {
   
   constructor(@Inject('config') private config:any,private network: Network,private http: HttpClient,public _site:SiteService,public af: AngularFireDatabase,public afs:AngularFirestore, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
     setting[setting.app].database = config.database?config.database:setting[setting.app].database;
-    //console.log("configDB",setting[setting.app].database);
-    //console.log("Db",this.getDatabase());
-    //console.log("BaseUrl",this.getBaseUrl());
   }
 
   // Config
@@ -31,8 +28,6 @@ export class QueryService {
     return setting[setting.app].database;
   }
   getBaseUrl(){
-    //return setting[setting.app].baseUrl;
-    //console.log("BASE URL",this.baseUrl);
     return baseUrl;
   }
 
@@ -49,8 +44,6 @@ export class QueryService {
       alert.present();
     }else if(db.firebase){
       return await this.firebase(db.firebase);
-    }else if(db.firestore){
-      return await this.firestore(db.firestore);
     }else if(db.json){
       return await this.json(db.json);
     }
@@ -59,19 +52,23 @@ export class QueryService {
 
   // Firebase
   async firebase(option){
-    let site = await this._site.getSite();
-    let withoutSite = option.withoutSite || false;
-    if(site || withoutSite){
-      let realtime = option.realtime || false; 
-      let pagination = option.pagination || false;
-      if(realtime){
-        return await this.firebaseRealtime(option,site);
-      }else if(pagination){
-        return await this.firebasePagination(option,site);
+    if(this.getDatabase() == dbFirestore){
+      return await this.firestore(option);
+    }else{
+      let site = await this._site.getSite();
+      let withoutSite = option.withoutSite || false;
+      if(site || withoutSite){
+        let realtime = option.realtime || false; 
+        let pagination = option.pagination || false;
+        if(realtime){
+          return await this.firebaseRealtime(option,site);
+        }else if(pagination){
+          return await this.firebasePagination(option,site);
+        }
+        return await this.firebaseOnce(option,site);
       }
-      return await this.firebaseOnce(option,site);
+      return 0;
     }
-    return 0;
   }
 
   async firebaseRealtime(option,site){
@@ -194,7 +191,8 @@ export class QueryService {
         if(page){
            data.shift();
         }
-        return {data:data,lastkey:lastKey};
+        return data;
+        //return {data:data,lastkey:lastKey};
       }
     }
     return 0;
@@ -355,7 +353,7 @@ export class QueryService {
     }
     let callback = await this.db(query);
     if(callback){
-      let builded = await this.build_tree(callback.data);
+      let builded = await this.build_tree(callback);
       await loader.dismiss();
       return builded;
     }
@@ -442,7 +440,7 @@ export class QueryService {
         return callback;
       }
       return 0;
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.banner_single+"/mester-banner",
@@ -453,7 +451,6 @@ export class QueryService {
       let callback = await this.db(query);
       return(callback || null);
     }
-    return 0;
   }
 
   //blog
@@ -471,7 +468,7 @@ export class QueryService {
         return callback;
       }
       return 0;
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.blog_category,
@@ -479,9 +476,8 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return (callback.data || null);
+      return (callback || null);
     }
-    return 0;
   }
 
   async blog_detail({load=false,id}){
@@ -499,7 +495,7 @@ export class QueryService {
       }
       return 0;
 
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.blog_list+"/"+id,
@@ -532,7 +528,7 @@ export class QueryService {
       }
       return 0;
 
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.blog_list,
@@ -543,9 +539,8 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
-    return 0;
   }
   async blog_listAll({load=false}){
     if(this.getDatabase() == dbMysql){
@@ -562,7 +557,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           loading:load,
@@ -570,7 +565,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
   }
   async blog_list({load=false,id}){
@@ -588,7 +583,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           loading:load,
@@ -600,7 +595,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
   }
   
@@ -706,7 +701,7 @@ export class QueryService {
         return(0);
       }
       
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.product_single,
@@ -714,7 +709,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
   }
 
@@ -726,7 +721,7 @@ export class QueryService {
       }
     }
     let callback = await this.db(query);
-    return(callback.data || null);
+    return(callback || null);
   }
 
   async product_filter({load=false}){
@@ -756,7 +751,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let categories = {
         firebase:{
           table:table.product_category,
@@ -764,9 +759,8 @@ export class QueryService {
         }
       }
       let callback = await this.db(categories);
-      return(callback.data || null);
+      return(callback || null);
     }
-    return 0;
   }
 
   async product_category({load=false}){
@@ -783,7 +777,7 @@ export class QueryService {
         return(callback);
       }
       return 0;
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let categories = {
         firebase:{
           table:table.product_category,
@@ -791,10 +785,10 @@ export class QueryService {
         }
       }
       let callback = await this.db(categories);
-      if(callback.data){
-          callback.data = this.unflatten(callback.data);
+      if(callback){
+          callback = this.unflatten(callback);
       }
-      return(callback.data || null);
+      return(callback || null);
     }
     
   }
@@ -813,7 +807,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let categories = {
         firebase:{
           table:table.product_category,
@@ -825,7 +819,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(categories);
-      return(callback.data[0] || null);
+      return(callback[0] || null);
     }
   }
 
@@ -846,7 +840,7 @@ export class QueryService {
         return(0);
       }
 
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.product_single+"/"+id,
@@ -874,7 +868,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.product_list,
@@ -886,7 +880,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
   }
   async product_store({load=false}){
@@ -904,7 +898,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.product_store,
@@ -912,7 +906,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
   }
 
@@ -932,7 +926,7 @@ export class QueryService {
       }else{
         return 0;
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.product_list,
@@ -940,7 +934,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
   }
 
@@ -971,7 +965,7 @@ export class QueryService {
       }
     }
     let callback = await this.db(query);
-    return(callback.data?callback.data[0]:null);
+    return(callback?callback[0]:null);
   }
 
   async product_couponUsed({load=false,id}){
@@ -985,7 +979,7 @@ export class QueryService {
       }
     }
     let callback = await this.db(query);
-    return(callback.data || null);
+    return(callback || null);
   }
 
   async product_couponTime({load=false,userId,id}){
@@ -999,7 +993,7 @@ export class QueryService {
       }
     }
     let callback = await this.db(query);
-    return(callback.data || []);
+    return(callback || []);
   }
 
   async product_type({type,load=false,limit = 0}){
@@ -1026,7 +1020,7 @@ export class QueryService {
         return(0);
       }
 
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
             table:table.product_list,
@@ -1039,7 +1033,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
   }
 
@@ -1061,19 +1055,9 @@ export class QueryService {
           return(0);
       }
 
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let queryCate = {
         firebase:{
-          table:table.listing_category,
-          loading:load
-        }
-      }
-      let callback = await this.db(queryCate);
-      return(callback.data || null);
-
-    }else if(this.getDatabase() == dbFirestore){
-      let queryCate = {
-        firestore:{
           table:table.listing_category,
           loading:load
         }
@@ -1090,7 +1074,7 @@ export class QueryService {
       }
     }
     let callback = await this.db(query);
-    return(callback.data || null);
+    return(callback || null);
   }
 
   async listing_featured({load=false}){
@@ -1108,7 +1092,7 @@ export class QueryService {
       }else{
         return(0);
       } 
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.listing_single,
@@ -1120,21 +1104,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return (callback.data || null);
-
-    }else if(this.getDatabase() == dbFirestore){
-      let query = {
-        firestore:{
-          table:table.listing_single,
-          loading:load,
-          orderBy:{
-            type:"featured",
-            equal:"1"
-          }
-        }
-      }
-      let callback = await this.db(query);
-      return(callback || null);
+      return (callback || null);
     }
   }
   async listing_list({load=false,id}){
@@ -1153,7 +1123,7 @@ export class QueryService {
         return(0);
       }
 
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.listing_single,
@@ -1165,21 +1135,8 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
-
-    }else if(this.getDatabase() == dbFirestore){
-      let query = {
-        firestore:{
-          table:table.listing_single,
-          loading:load,
-          orderBy:{
-            type:"category",
-            equal:id
-          }
-        }
-      }
-      let callback = await this.db(query);
       return(callback || null);
+
     }
   }
   async listing_listAll({load=false}){
@@ -1198,18 +1155,9 @@ export class QueryService {
         return(0);
       }
        
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
             firebase:{
-              table:table.listing_single,
-              loading:load
-            }
-      }
-      let callback = await this.db(query);
-      return(callback.data || null);
-    }else if(this.getDatabase() == dbFirestore){
-      let query = {
-            firestore:{
               table:table.listing_single,
               loading:load
             }
@@ -1236,7 +1184,7 @@ export class QueryService {
         return(0);
       }
       
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
           firebase:{
             table:table.navigation+"/mobile/navigations",
@@ -1266,7 +1214,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.gallery_category,
@@ -1274,7 +1222,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);  
+      return(callback || null);  
     }
   }
   async gallery_detail({load=false,id}){
@@ -1294,7 +1242,7 @@ export class QueryService {
       }
       
       
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.gallery_single+"/"+id,
@@ -1322,7 +1270,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.gallery_single,
@@ -1334,7 +1282,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null); 
+      return(callback || null); 
     }
   }
   async gallery_single({load=false}){
@@ -1352,7 +1300,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.gallery_single,
@@ -1360,7 +1308,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
   }
 
@@ -1380,7 +1328,7 @@ export class QueryService {
         }else{
           return(0);
         }
-      }else if(this.getDatabase() == dbFirebase){
+      }else{
         let query = {
           firebase:{
             table:table.page_single+"/"+slug+"_"+lang,
@@ -1407,7 +1355,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.page_single,
@@ -1415,7 +1363,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
   }
 
@@ -1435,7 +1383,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.portfolio_category,
@@ -1444,7 +1392,7 @@ export class QueryService {
 
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
   }
   
@@ -1465,7 +1413,7 @@ export class QueryService {
         return(0);
       }
      
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.portfolio_single,
@@ -1477,7 +1425,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
   }
   async portfolio_single({load=false}){
@@ -1495,7 +1443,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.portfolio_single,
@@ -1503,7 +1451,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
   }
 
@@ -1516,7 +1464,7 @@ export class QueryService {
       }
     }
     let callback = await this.db(query);
-    return(callback.data || null);
+    return(callback || null);
   }
 
   async order_user({load=false}){
@@ -1533,7 +1481,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }else{
       return(0);
     }
@@ -1554,7 +1502,7 @@ export class QueryService {
         return(0);
       }
     }
-    else if(this.getDatabase() == dbFirebase){
+    else{
       let query = {
         firebase:{
           table:table.order_single,
@@ -1567,7 +1515,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null); 
+      return(callback || null); 
     }
     
   }
@@ -1586,7 +1534,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.order_address,
@@ -1598,7 +1546,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return (callback.data || null);
+      return (callback || null);
     }
   }
   async order_gateway({load=false}){
@@ -1617,7 +1565,7 @@ export class QueryService {
         return(0);
       }
       
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.order_gateway,
@@ -1625,7 +1573,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
   }
   async order_shipping({load=false}){
@@ -1636,7 +1584,7 @@ export class QueryService {
       }
     }
     let callback = await this.db(query);
-    return(callback.data || null);
+    return(callback || null);
   }
 
   //user
@@ -1655,7 +1603,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase){
+    }else{
       let query = {
         firebase:{
           table:table.users_single,
@@ -1663,7 +1611,7 @@ export class QueryService {
         }
       }
       let callback = await this.db(query);
-      return(callback.data || null);
+      return(callback || null);
     }
   }
 
@@ -1676,7 +1624,7 @@ export class QueryService {
       }
     }
     let callback = await this.db(query);
-    return(callback.data || null);
+    return(callback || null);
   }
 
   //images
@@ -1742,7 +1690,7 @@ export class QueryService {
       }else{
         return(0);
       }
-    }else if(this.getDatabase() == dbFirebase || this.getDatabase() == dbFirestore){
+    }else{
       let query = {
         firebase:{
           table:table.users_single+'/'+hash,
