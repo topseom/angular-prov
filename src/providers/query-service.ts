@@ -251,12 +251,17 @@ export class QueryService {
       if(data){
         let query = await (data as any).get();
         if(query){
-          let data = [];
-          query.forEach(item=>{
-            let array = item.data();
-            data.push(array);
-          });
-          return data;
+          if(type == "object"){
+            return query.data();
+          }else{
+            let data = [];
+            query.forEach(item=>{
+              let array = item.data();
+              data.push(array);
+            });
+            return data;
+          }
+          
         }
       }
       return 0;
@@ -269,13 +274,26 @@ export class QueryService {
     let orderBy = option.orderBy || false;
     let limit = option.limit || false;
     let table = option.table || false;
+    let type = option.type || false;
     let withoutSite = option.withoutSite || false;
     let query;
 
     if(withoutSite){
-      query = this.afs.firestore.collection(table).doc("lists");
+      if(type == "object"){
+        query = this.afs.firestore.collection(table+"/lists");
+      }else{
+        query = this.afs.firestore.collection(table+"/lists");
+      }
     }else{
-      query = this.afs.firestore.collection(site).doc(table).collection("lists");
+      if(type == "object"){
+        let tb = table.split("/");
+        let index = tb[tb.length - 1];
+        tb.pop();
+        table = tb.join("/");
+        query = this.afs.firestore.collection(site+"/"+table+"/lists").doc(index);
+      }else{
+        query = this.afs.firestore.collection(site+"/"+table+"/lists");
+      }
     }
     if(orderBy){ 
       let c_orderBy = query;
