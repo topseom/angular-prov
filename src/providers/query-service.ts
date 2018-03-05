@@ -280,7 +280,11 @@ export class QueryService {
 
     if(withoutSite){
       if(type == "object"){
-        query = this.afs.firestore.collection(table+"/lists");
+        let tb = table.split("/");
+        let index = tb[tb.length - 1];
+        tb.pop();
+        table = tb.join("/");
+        query = this.afs.firestore.collection(table+"/lists").doc(index);
       }else{
         query = this.afs.firestore.collection(table+"/lists");
       }
