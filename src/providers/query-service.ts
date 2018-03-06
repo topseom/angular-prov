@@ -120,7 +120,8 @@ export class QueryService {
               let array = item.val();
               data.push(array);
             });
-            return {data:data};
+            return data;
+            //return {data:data};
           }
         }
       }
@@ -246,25 +247,30 @@ export class QueryService {
     }
     // Query
     if(option.table){
-      let data = await this.firestoreOrderByAndLimit(option,site);
-      await loader.dismiss();
-      if(data){
-        let query = await (data as any).get();
-        if(query){
-          if(type == "object"){
-            return query.data();
-          }else{
-            let data = [];
-            query.forEach(item=>{
-              let array = item.data();
-              data.push(array);
-            });
-            return data;
-          }
-          
+      try{
+        let data = await this.firestoreOrderByAndLimit(option,site);
+          if(data){
+            let query = await (data as any).get();
+            if(query){
+              if(type == "object"){
+                await loader.dismiss();
+                return query.data();
+              }else{
+                let data = [];
+                query.forEach(item=>{
+                  let array = item.data();
+                  data.push(array);
+                });
+                await loader.dismiss();
+                return data;
+              }
+              
+            }
         }
+      }catch(e){
+        
       }
-      return 0;
+      
     }
     await loader.dismiss();
     return 0;

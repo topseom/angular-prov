@@ -35,7 +35,7 @@ export class AuthService {
   textAlertNotFoundSite = "Not Found Site!";
   textAlertWrongUserPassword = "Wrong User or Password";
   textAlertFilUserPassword = "Please Fill User or Password";
-  
+  textAlertCannotPermissions = "This Users Not have permission";
   constructor(public afauth:AngularFireAuth,public _query:QueryService,public _site:SiteService,public af: AngularFireDatabase,public googleplus: GooglePlus,private fb: Facebook,public toastCtrl:ToastController, public storage: StorageService, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
   }
 
@@ -263,13 +263,24 @@ export class AuthService {
     return 0;
   }
 
-  async login(user,password){
+  async login(user,password,permissions=[]){
     if(user && password){
       let hash = sha1(user);
       let callback = await this._query.auth_user({username:user,password:password,hash,load:true});
-      if(callback && this._query.getDatabase() == dbFirebase || this._query.getDatabase() == dbFirestore){
+      if(callback && this._query.getDatabase() == dbFirebase || callback && this._query.getDatabase() == dbFirestore){
         let input = sha1(password+callback.salt);
         if(input === callback.password){
+          let groups = permissions['group_id'].find(data=>data === callback.group_id);
+          if(permissions['group_id'] && !permissions['group_id'].find(data=>data === callback.group_id)){
+            let alert = this.alertCtrl.create({
+              message:this.textAlertCannotPermissions,
+              buttons:[{
+                text:"Ok"
+              }]
+            });
+            alert.present();
+            return 0;
+          }
           await this.storage.setLocal(this.user,callback);
           return 1;
         }
