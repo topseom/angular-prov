@@ -1,39 +1,4 @@
 // Database
-export const api = {
-    banner_single:"json_banner_home",
-    product_list:"json_product_list",
-    product_category:"json_product_category",
-    product_category_id:"json_product_category_id",
-    product_list_category_filter:"json_category_filter_id",
-    product_single:"json_product_single",
-    product_single_id:"json_product_single_id",
-    product_filter:"json_product_filter",
-    product_type:"json_product_type",
-    blog_category:"json_blog_categories",
-    blog_list:"json_blog_list",
-    blog_list_category:"json_blog_list_categories",
-    blog_list_id:"json_blog_single_id",
-    blog_list_type:"json_blog_type",
-    gallery_category:"json_gallery_category",
-    gallery_list_category:"json_gallery_category_list_id",
-    gallery_single:"json_gallery_single",
-    gallery_list_id:"json_gallery_single_id",
-    listing_category:"json_listing_category",
-    listing_list_category:"json_listing_list_category_id",
-    listing_list_featured:"json_listing_featured",
-    listing_single:"json_listing_single",
-    navigation:"json_navigation",
-    page_single:"json_page_single",
-    page_list_id:"json_page_single_id",
-    portfolio_category:"json_portfolio_category",
-    portfolio_list_category:"json_portfolio_single_id",
-    portfolio_single:"json_portfolio_single",
-    order_gateway:"json_gateway",
-    order_address_user:"json_address_user",
-    users_single:"json_users",
-    user_login:"json_login",
-    app_setting:"json_app_setting"
-}
 export const table = {
     banner_single:"banner_single",
     navigation:"navigation",
@@ -60,12 +25,10 @@ export const table = {
     users_single:"users_single",
     users_group:"users_group",
     stream_signup:"stream_signup",
-    app_setting:"app_setting",
     form_config:"form/config",
     images:"images",
     site_list:"SITE/site_list/"
 }
-
 export const dbFirebase = "firebase";
 export const dbFirestore = "firestore";
 export const dbMysql = "json";

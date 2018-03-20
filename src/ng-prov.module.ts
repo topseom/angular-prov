@@ -39,6 +39,7 @@ export const APP_PIPES = [
 	JsonParse
 ]
 
+import { SiteStorage } from './providers/site-storage';
 import { SiteService } from './providers/site-service';
 import { AuthService } from './providers/auth-service';
 import { StorageService } from './providers/storage-service';
@@ -140,6 +141,7 @@ export class NgProvModule{
           ngModule: NgProvModule,
           providers: [
               {provide: 'config', useValue: config},
+              SiteStorage,
               SiteService,
               AuthService,
               StorageService,

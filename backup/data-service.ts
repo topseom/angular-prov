@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { AlertController } from 'ionic-angular';
 import { StorageService } from './storage-service';
-import { QueryService,Options } from './query-service';
-import { dbFirebase,table,api, dbFirestore, dbMysql } from './interface';
+import { QueryService } from './query-service';
+import { dbFirebase,table } from './interface';
 import * as _ from 'lodash';
 
 export interface ConfigFilter{
@@ -14,7 +14,7 @@ export interface ConfigFilter{
 
 export interface Config{
 	table:string;
-	options?:Options;
+	query:{func,param:object};
 	offline?:boolean;
 	filter?:ConfigFilter;
 }
@@ -126,31 +126,33 @@ export class DataService{
     async data_generate(config:Config):Promise<any>{
 		let setting = await this._storage.getSetting();
 		if(setting.offline || config.offline){
-			let data = await this._storage.getLocalData(config.table);
-			if(data && config.filter){
+			let callback = await this._storage.getLocalData(config.table);
+			if(callback && config.filter){
 				if(config.filter.parent_key){
-					data = _.filter(data,function(o) { return _.get(o,''+config.filter.parent_key+'.'+config.filter.key+'') == config.filter.value; });
+					callback = _.filter(callback,function(o) { return _.get(o,''+config.filter.parent_key+'.'+config.filter.key+'') == config.filter.value; });
 				}else{
-					data = _.filter(data,function(o){return o[config.filter.key] == config.filter.value});
+					callback = _.filter(callback,function(o){return o[config.filter.key] == config.filter.value});
 				}
 				if(config.filter.object){
-					data = data[0];
+					callback = callback[0];
 				}
 			}
-			return data;
+			return callback;
 		}else{
-			//let data = await config.query.func.bind(this._query)(config.query.param);
-			let data = await this._query.query(config.table,config.options);
-			return data;
+			let callback = await config.query.func.bind(this._query)(config.query.param);
+			return callback;
 		}
 	}
-
+	  
     async banner_home({load=true,offline=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.banner_single,
 			offline:offline,
-			options:new Options({ loading:load,where:[{key:'slug',value:'mester-banner'}],method:"get",api:api.banner_single }),
+			query:{
+				func:this._query.banner_home,
+				param:{load:load}
+			},
 			filter:{
 				key:"slug",
 				value:"mester-banner"
@@ -160,12 +162,15 @@ export class DataService{
 		return callback;
 	}
 
-  async navigation({load=true,offline=false,slide=false,slide_limit=10}={}):Promise<any>{
+    async navigation({load=true,offline=false,slide=false,slide_limit=10}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.navigation,
 			offline:offline,
-			options:new Options({ loading:load,where:[{key:'abbrev',value:'mobile'}],method:"get",api:api.navigation })
+			query:{
+				func:this._query.navigations,
+				param:{load:load}
+			}
 		}
 		let callback = await this.data_generate(option);
 		if(slide){
@@ -173,14 +178,17 @@ export class DataService{
 			return module;
 		}
 		return callback;
-  }
+  	}
 
-  async blog_categories({load=true,offline=false}={}):Promise<any>{
+    async blog_categories({load=true,offline=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.blog_category,
 			offline:offline,
-			options:new Options({ loading:load,method:"get",api:api.blog_category })
+			query:{
+				func:this._query.blog_categories,
+				param:{load:load}
+			}
 		}
 		let callback = await this.data_generate(option);
 		return callback;
@@ -191,7 +199,10 @@ export class DataService{
 		option = {
 			table:table.blog_list,
 			offline:offline,
-			options:new Options({ loading:load,method:"get",api:api.blog_list_category+"/"+id}),
+			query:{
+				func:this._query.blog_list,
+				param:{load:load,id:id}
+			},
 			filter:{
 				key:"category",
 				value:id
@@ -202,17 +213,14 @@ export class DataService{
 	}
 
     async blog_type({type,load=true,offline=false}):Promise<any>{
-		let type_json = type;
-		switch(type){
-			case "featured":
-			  type_json = "featured_blog";
-			  break;
-		  }
 		let option:Config;
 		option = {
 			table:table.blog_list,
 			offline:offline,
-			options:new Options({ loading:load,where:[{key:type,value:'1'}],method:"get",api:api.blog_list_type+"/"+type}),
+			query:{
+				func:this._query.blog_type,
+				param:{load:load,type:type}
+			},
 			filter:{
 				key:type,
 				value:"1"
@@ -227,7 +235,10 @@ export class DataService{
 		option = {
 			table:table.blog_list,
 			offline:offline,
-			options:new Options({ loading:load,type:"object",table_path:id,method:"get",api:api.blog_list_id+"/"+id}),
+			query:{
+				func:this._query.blog_detail,
+				param:{load:load,id:id}
+			},
 			filter:{
 				key:"id",
 				value:id,
@@ -237,47 +248,49 @@ export class DataService{
 		let callback = await this.data_generate(option);
 		return callback;
   	}
-	
-  async gallery_single({load=true,offline=false}={}):Promise<any>{
-		let option:Config;
-		option = {
-			table:table.gallery_single,
-			offline:offline,
-			options:new Options({ loading:load,method:"get",api:api.gallery_single })
-		}
-		let callback = await this.data_generate(option);
-		return callback;
-	}
-	
-  async gallery_category({load=true,offline=false}={}):Promise<any>{
+
+
+    async gallery_category({load=true,offline=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.gallery_category,
 			offline:offline,
-			options:new Options({ loading:load,method:"get",api:api.gallery_category })
+			query:{
+				func:this._query.gallery_category,
+				param:{load:load}
+			}
 		}
 		let callback = await this.data_generate(option);
 		return callback;
 	}
 	  
-  async gallery_list({id,load=true,offline=false}):Promise<any>{
+    async gallery_list({id,load=true,offline=false}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.gallery_single,
 			offline:offline,
-			options:new Options({ loading:load,where:[{key:"category",value:id}],method:"get",api:api.gallery_list_category+"/"+id }),
-			filter:{ key:"category",value:id }
+			query:{
+				func:this._query.gallery_list,
+				param:{load:load,id:id}
+			},
+			filter:{
+				key:"category",
+				value:id
+			}
 		}
 		let callback = await this.data_generate(option);
 		return callback;
 	}
 	  
-  async gallery_detail({id,load=true,offline=false}):Promise<any>{
+    async gallery_detail({id,load=true,offline=false}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.gallery_single,
 			offline:offline,
-			options:new Options({ loading:load,type:"object",table_path:id,method:"get",api:api.gallery_list_id+"/"+id }),
+			query:{
+				func:this._query.gallery_detail,
+				param:{load:load,id:id}
+			},
 			filter:{
 				key:"id",
 				value:id,
@@ -286,25 +299,31 @@ export class DataService{
 		}
 		let callback = await this.data_generate(option);
 		return callback;
-  }
+  	}
 
-  async portfolio_category({load=true,offline=false}={}):Promise<any>{
+  	async portfolio_category({load=true,offline=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.portfolio_category,
 			offline:offline,
-			options:new Options({ loading:load,method:"get",api:api.portfolio_category })
+			query:{
+				func:this._query.portfolio_categories,
+				param:{load:load}
+			}
 		}
 		let callback = await this.data_generate(option);
 		return callback;
 	}
 	  
-  async portfolio_list({id,load=true,offline=false}):Promise<any>{
+    async portfolio_list({id,load=true,offline=false}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.portfolio_single,
 			offline:offline,
-			options:new Options({ loading:load,where:[{key:"category",value:id}],method:"get",api:api.portfolio_list_category+"/"+id }),
+			query:{
+				func:this._query.portfolio_detail,
+				param:{load:load,id:id}
+			},
 			filter:{
 				key:"category",
 				value:id
@@ -312,23 +331,17 @@ export class DataService{
 		}
 		let callback = await this.data_generate(option);
 		return callback;
-  }
-	async page_single({load=true,offline=false}):Promise<any>{
+  	}
+	
+    async page_detail({slug,load=true,offline=false}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.page_single,
 			offline:offline,
-			options:new Options({ loading:load,method:"get",api:api.page_single})
-		}
-		let callback = await this.data_generate(option);
-		return callback['body'];
-	}
-	async page_detail({slug,load=true,offline=false}):Promise<any>{
-		let option:Config;
-		option = {
-			table:table.page_single,
-			offline:offline,
-			options:new Options({ loading:load,where:[{key:"slug",value:slug}],method:"get",api:api.page_list_id+"/"+slug}),
+			query:{
+				func:this._query.page_detail,
+				param:{load:load,slug:slug}
+			},
 			filter:{
 				key:"slug",
 				value:slug,
@@ -339,7 +352,7 @@ export class DataService{
 		return callback['body'];
 	}
 	  
-  async product_detail({id,load=true,offline=false,withOption=false}):Promise<any>{
+    async product_detail({id,load=true,offline=false,withOption=false}):Promise<any>{
 		let funcWithOption = (product)=>{
 			let array = [];
             let index = -1;
@@ -363,7 +376,10 @@ export class DataService{
 		option = {
 			table:table.product_single,
 			offline:offline,
-			options:new Options({ loading:load,type:"object",table_path:id,method:"get",api:api.product_single_id+"/"+id }),
+			query:{
+				func:this._query.product_detail,
+				param:{load:load,id:id}
+			},
 			filter:{
 				key:"id",
 				value:id,
@@ -377,23 +393,15 @@ export class DataService{
 		return callback;
 	}
 
-	async product_single({load=true,offline=false}={}):Promise<any>{
-		let option:Config;
-		option = {
-			table:table.product_single,
-			offline:offline,
-			options:new Options({ loading:load,method:"get", api:api.product_single })
-		}
-		let callback = await this.data_generate(option);
-		return callback;
-	}
-
-  async product_list({id,load=true,offline=false}):Promise<any>{
+    async product_list({id,load=true,offline=false}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.product_list,
 			offline:offline,
-			options:new Options({ loading:load,where:[{key:"category_"+id,value:"1"}],method:"get",api:api.product_category_id+"/"+id }),
+			query:{
+				func:this._query.product_list,
+				param:{load:load,id:id}
+			},
 			filter:{
 				parent_key:"category",
 				key:"category_"+id,
@@ -404,32 +412,29 @@ export class DataService{
 		return callback;
 	}
 
-  async product_listAll({load=true,offline=false}={}):Promise<any>{
+    async product_listAll({load=true,offline=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.product_list,
 			offline:offline,
-			options:new Options({ loading:load,method:"get", api:api.product_list })
+			query:{
+				func:this._query.product_listAll,
+				param:{load:load}
+			}
 		}
 		let callback = await this.data_generate(option);
 		return callback;
-  }
+  	}
 
-  async product_type({type,load=true,limit=0,offline=false}):Promise<any>{
-		let type_json;
-		switch(type){
-			case "new":
-			  type_json = "show_new"
-			  break;
-			case "sale":
-			  type_json = "show_sale"
-			  break;
-		}
+    async product_type({type,load=true,limit=0,offline=false}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.product_list,
 			offline:offline,
-			options:new Options({ loading:load,method:"get", api:api.product_type+"/"+type }),
+			query:{
+				func:this._query.product_type,
+				param:{load:load,type:type,limit:limit}
+			},
 			filter:{
 				key:type,
 				value:"1"
@@ -439,12 +444,15 @@ export class DataService{
 		return callback;
 	}
 
-  async product_category_id({id,load=true,offline=false}):Promise<any>{
+    async product_category_id({id,load=true,offline=false}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.product_category,
 			offline:offline,
-			options:new Options({ loading:load,type:"object",table_path:id,method:"get",api:api.product_list_category_filter+"/"+id }),
+			query:{
+				func:this._query.product_category_filter_id,
+				param:{load:load,id:id}
+			},
 			filter:{
 				key:"id",
 				value:id,
@@ -455,23 +463,29 @@ export class DataService{
 		return callback;
 	}
 
-  async product_category({load=true,offline=false}={}):Promise<any>{
+    async product_category({load=true,offline=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.product_category,
 			offline:offline,
-			options:new Options({ loading:load,method:"get",api:api.product_category })
+			query:{
+				func:this._query.product_category,
+				param:{load:load}
+			}
 		}
 		let callback = await this.data_generate(option);
 		return callback;
 	}
 
-  async product_search({search,load=true,offline=false}):Promise<any>{
+    async product_search({search,load=true,offline=false}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.product_list,
 			offline:offline,
-			options:new Options({ loading:load,method:"get",api:api.product_list})
+			query:{
+				func:this._query.product_listAll,
+				param:{load:load}
+			}
 		}
 		let callback = await this.data_generate(option);
 		if(callback){
@@ -485,79 +499,27 @@ export class DataService{
 		}
 		return callback;
 	}
-
-	async product_barcode({load=true,offline=false}={}):Promise<any>{
-		let option:Config;
-		option = {
-			table:table.product_barcode,
-			offline:offline,
-			options:new Options({ loading:load })
-		}
-		let callback = await this.data_generate(option);
-		return callback;
-	}
 	  
-  async product_filter({option,product,load=true,cate_id=""}):Promise<any>{
+    async product_filter({option,product,load=true,cate_id=""}):Promise<any>{
 		let setting = await this._storage.getSetting();
-		if(setting.offline || this._query.getDatabase() == dbFirebase || this._query.getDatabase() == dbFirestore){
-			if(cate_id){
-				if(option){
-				  let filter = [];
-				  option.forEach(op=>{
-					let id = op.split(":")[1];
-					product.forEach(data=>{
-					  if(data.category && data.category['category_'+cate_id] && data.filter && data.filter['filter_'+id]){
-						filter.push(data);
-					  }
-					});
-				  });
-				  if(filter.length){
-					filter = _.uniqBy(filter,"id");
-				  }else{
-					filter = product;
-				  }
-				  return(filter);
-				}else{
-				  return(product);
-				}
-			}else{
-				if(option){
-				  let filter = [];
-				  option.forEach(op=>{
-					let id = op.split(":")[1];
-					product.forEach(data=>{
-					  if(data.filter && data.filter['filter_'+id]){
-						filter.push(data);
-					  }
-					});
-				  });
-				  if(filter.length){
-					filter = _.uniqBy(filter,"id");
-				  }else{
-					filter = product;
-				  }
-				  return(filter);
-				}else{
-				  return(product);
-				}
-			}
+		if(setting.offline || this._query.getDatabase() == dbFirebase){
+			let data = await this._query.product_filter_local({product:product,option:option});
+			return data;
 		}else{
-			let option:Config;
-			option = {
-				table:table.product_filter,
-				options:new Options({ loading:load,method:"post",api:api.product_filter,data:{option,cate_id} })
-			}
-			let callback = await this.data_generate(option);
-			return callback;
+			let data = await this._query.product_filterPhp({load:load,cate_id:cate_id,option:option});
+			return data;
 		}
 	}
 
-  async listing_featured({load=true,offline=false,groupByCate=false}={}):Promise<any>{
+    async listing_featured({load=true,offline=false,groupByCate=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.listing_single,
 			offline:offline,
-			options:new Options({ loading:load,where:[{key:"featured",value:"1"}],method:"get",api:api.listing_list_featured })
+			query:{
+				func:this._query.listing_featured,
+				param:{load:load}
+			}
 		}
 		let callback = await this.data_generate(option);
 		if(callback){
@@ -577,12 +539,15 @@ export class DataService{
 		return callback;
 	}
 
-  async listing_list({id,load=true,offline=false}):Promise<any>{
+    async listing_list({id,load=true,offline=false}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.listing_single,
 			offline:offline,
-			options:new Options({ loading:load,where:[{key:"category",value:id}],method:"get",api:api.listing_list_category+"/"+id }),
+			query:{
+				func:this._query.listing_list,
+				param:{load:load,id:id}
+			},
 			filter:{
 				key:"category",
 				value:id
@@ -592,34 +557,43 @@ export class DataService{
 		return callback;
 	}
 
-  async listing_listAll({load=true,offline=false}={}):Promise<any>{
+    async listing_listAll({load=true,offline=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.listing_single,
 			offline:offline,
-			options:new Options({ loading:load,method:"get",api:api.listing_single })
+			query:{
+				func:this._query.listing_listAll,
+				param:{load:load}
+			}
 		}
 		let callback = await this.data_generate(option);
 		return callback;
 	}
 
-  async listing_category({load=true,offline=false}={}):Promise<any>{
+    async listing_category({load=true,offline=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.listing_category,
 			offline:offline,
-			options:new Options({ loading:load,method:"get",api:api.listing_category })
+			query:{
+				func:this._query.listing_category,
+				param:{load:load}
+			}
 		}
 		let callback = await this.data_generate(option);
 		return callback;
 	}
 	  
-  async order_address({id,load=true,offline=false}):Promise<any>{
+    async order_address({id,load=true,offline=false}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.order_address,
 			offline:offline,
-			options:new Options({ loading:load,where:[{key:"created_by",value:id}],method:"get",api:api.order_address_user+"/"+id }),
+			query:{
+				func:this._query.order_address,
+				param:{load:load,id:id}
+			},
 			filter:{
 				key:"created_by",
 				value:id
@@ -629,114 +603,59 @@ export class DataService{
 		return callback;
 	}
 
-  async order_gateway({load=true,offline=false}={}):Promise<any>{
+    async order_gateway({load=true,offline=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.order_gateway,
 			offline:offline,
-			options:new Options({ loading:load,method:"get",api:api.order_gateway })
+			query:{
+				func:this._query.order_gateway,
+				param:{load:load}
+			}
 		}
 		let callback = await this.data_generate(option);
 		return callback;
 	}
 
-  async order_single({load=true,offline=false}={}):Promise<any>{
+    async order_single({load=true,offline=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.order_single,
 			offline:offline,
-			options:new Options({ loading:load })
+			query:{
+				func:this._query.order_single,
+				param:{load:load}
+			}
 		}
 		let callback = await this.data_generate(option);
 		return callback;
 	}
 
-	async user_login({email,password,load=true,offline=false}):Promise<any>{
+    async users_single({load=true,offline=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.users_single,
 			offline:offline,
-			options:new Options({ loading:load,where:[{key:"email",value:email}],data:{username:email,password:password},method:"post",api:api.user_login })
-		}
-		let callback = await this.data_generate(option);
-		return callback;
-	}
-	
-	async site_ref({ref,load=true,offline=false}):Promise<any>{
-		let option:Config;
-		option = {
-			table:table.site_list,
-			offline:offline,
-			options:new Options({ 
-				loading:load,
-				database:dbMysql,
-				data:{ ref },
-				type:"post",
-				api:"json_site"
-			})
+			query:{
+				func:this._query.users_single,
+				param:{load:load}
+			}
 		}
 		let callback = await this.data_generate(option);
 		return callback;
 	}
 
-	async site_domain({domain,load=true,offline=false}):Promise<any>{
-		let option:Config;
-		option = {
-			table:table.site_list,
-			offline:offline,
-			options:new Options({ 
-				loading:load,
-				database:dbMysql,
-				data:{ domain },
-				type:"post",
-				api:"json_site"
-			})
-		}
-		let callback = await this.data_generate(option);
-		return callback;
-	}
-
-  async users_single({load=true,offline=false}={}):Promise<any>{
-		let option:Config;
-		option = {
-			table:table.users_single,
-			offline:offline,
-			options:new Options({ loading:load,method:"get",api:api.users_single })
-		}
-		let callback = await this.data_generate(option);
-		return callback;
-	}
-
-	async form_config({load=true,offline=false}={}):Promise<any>{
+    async form_config({type,load=true,offline=false}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.form_config,
 			offline:offline,
-			options:new Options({ loading:load })
-		}
-		let callback = await this.data_generate(option);
-		return callback;
-	}
-
-    async form_config_type({type,load=true,offline=false}):Promise<any>{
-		let option:Config;
-		option = {
-			table:table.form_config,
-			offline:offline,
-			options:new Options({ loading:load,table_path:type,type:"object" })
+			query:{
+				func:this._query.form_config,
+				param:{load:load}
+			}
 		}
 		let callback = await this.data_generate(option);
 		return callback[type];
-	}
-
-	async app_setting({load=true,offline=false}={}):Promise<any>{
-		let option:Config;
-		option = {
-			table:table.app_setting,
-			offline:offline,
-			options:new Options({ loading:load,table_path:"0",type:"object",method:"get",api:api.app_setting })
-		}
-		let callback = await this.data_generate(option);
-		return callback;
 	}
 }

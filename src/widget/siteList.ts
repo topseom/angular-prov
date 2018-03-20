@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { NavParams,ViewController } from 'ionic-angular';
-import { SiteService } from '../providers/site-service';
+import { SiteStorage } from '../providers/site-storage';
 
 @Component({
   selector:"widget-siteList",
@@ -20,10 +20,10 @@ import { SiteService } from '../providers/site-service';
 })
 export class WidgetSitelist{
   siteArray:any;
-	constructor(public _site:SiteService,public viewCtrl:ViewController,public params:NavParams){}
+	constructor(public _siteStore:SiteStorage,public viewCtrl:ViewController,public params:NavParams){}
 
 	ngOnInit(){
-    this._site.getSiteArray().then(callback=>{
+    this._siteStore.getSiteArray().then(callback=>{
       if(callback){
         this.siteArray = callback;
       }
@@ -31,7 +31,7 @@ export class WidgetSitelist{
 	}
 
 	selectSite(site){
-    this._site.selectSiteArray(site).then(callback=>{
+    this._siteStore.selectSiteArray(site).then(callback=>{
       if(callback){
         let data ={};
         data['update'] = callback;
@@ -40,7 +40,7 @@ export class WidgetSitelist{
     });
 	}
 	removeSite(site,index:number){
-    this._site.removeSiteArray(site).then(callback=>{
+    this._siteStore.removeSiteArray(site).then(callback=>{
       if(callback){
         let data ={};
         data['update'] = callback;

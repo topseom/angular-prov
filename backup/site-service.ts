@@ -4,13 +4,8 @@ import { HttpClient } from '@angular/common/http';
 import { Network } from '@ionic-native/network';
 import {AlertController,LoadingController,ToastController} from 'ionic-angular';
 
-import { DataService } from './data-service';
-import { AuthService } from './auth-service';
-import { StorageService } from './storage-service';
-import { SiteArray,Site,SiteStorage } from './site-storage';
-
-
 import 'rxjs/add/operator/take';
+import * as _ from 'lodash';
 import * as tsfirebase from 'firebase';
 import 'firebase/firestore';
 
@@ -23,13 +18,19 @@ import { TranslateService } from '@ngx-translate/core';
 
 import * as ImgCache from 'imgcache.js';
 
-
 import { App } from '../../config/app';
 import { textInternetConnectOffline,baseUrl,firebaseController,dbFirestore,dbFirebase } from './interface';
-
 let setting = App;
 
-
+export interface SiteArray{
+  site: string;
+  title: string;
+  domain:string;
+}
+export interface Site{
+  data:SiteArray,
+  array:Array<SiteArray>
+}
 
 export interface RootConfig{
   siteArray?:string;
@@ -64,17 +65,15 @@ export class SiteService{
   textLoadingCheckDatabase = "check database .."; 
   textLoadingSiteRef ="Loading ...<br>(Ref)";
   textLoadingTheme = "Loading Theme...";
+  textToastSiteRemove = 'Remove Site Complete!';
+  textAlertRemove = 'Do You Want to Remove This Site?!';
+  textAlertRemoveLastOne = 'Can not Delete this site because site must at least one!';
   textErrorConnect = "Can't Connect Database";
-
-  constructor(@Inject('config') private config:any,public _data:DataService,private network: Network,public translate: TranslateService,public platform: Platform,public statusBar: StatusBar,public splashScreen: SplashScreen,private http: HttpClient,public storage: StorageService,public toastCtrl:ToastController,public alertCtrl:AlertController,public loadingCrtl:LoadingController,public _siteStore:SiteStorage,public _auth:AuthService) {
+  constructor(@Inject('config') private config:any,private network: Network,public translate: TranslateService,public platform: Platform,public statusBar: StatusBar,public splashScreen: SplashScreen,private http: HttpClient,public storage: Storage,public toastCtrl:ToastController,public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
     setting.demo = config.demo === false?config.demo:setting.demo;
     setting.platform = config.platform?config.platform:setting.platform;
     setting[setting.app].database = config.database?config.database:setting[setting.app].database;
     this.demo_mobile = setting.platform == "mobile" && setting.demo;
-  }
-  
-  async getConfigApp(){
-    return await this.config?this.config:App;
   }
 
   //Config App
@@ -82,7 +81,7 @@ export class SiteService{
 
     let getCacheSiteWeb = async(site:any) =>{
       let config = await this.getConfigApp();
-      let cache = await this.storage.getLocal(this.siteWeb);
+      let cache = await this.storage.get(config.app+this.siteWeb);
       if(cache && cache[site]){
         return site;
       }
@@ -91,7 +90,7 @@ export class SiteService{
 
     let setCacheSiteWeb = async(site:any) =>{
       let config = await this.getConfigApp();
-      let cache = await this.storage.getLocal(this.siteWeb);
+      let cache = await this.storage.get(config.app+this.siteWeb);
       if(cache){
         cache[site] = true;
         site = cache;
@@ -100,7 +99,7 @@ export class SiteService{
         object[site] = true;
         site = object;
       }
-      await this.storage.setLocal(this.siteWeb,site);
+      await this.storage.set(config.app+this.siteWeb,site);
       return site;
     }
 
@@ -109,19 +108,13 @@ export class SiteService{
           let loader = this.loadingCrtl.create();
           loader.setContent(this.textLoadingSiteRef);
           loader.present();
-          
-          let ref = await this._data.site_ref({ref:site});
-          if(ref){
-            await setCacheSiteWeb(site);
-            return site;
-          }
-          /*let ref = firebase.database().ref().child("SITE/ref_list/"+site);
+          let ref = firebase.database().ref().child("SITE/ref_list/"+site);
           let snapshot = await ref.once('value');
           await loader.dismiss();
           if(snapshot.val()){     
             await setCacheSiteWeb(site);
             return site;
-          }*/
+          }
         }
         return 0;
     }
@@ -139,7 +132,7 @@ export class SiteService{
         config.site = config.siteArray;
       }
       if(config.user && !config.site){
-        let user = await this._auth.getUser();
+        let user = await this.getUser();
         if(user){
           callbackRoot.auth = true;
         }
@@ -147,16 +140,16 @@ export class SiteService{
       }else if(config.user && config.site){
         if(config.siteArray){
           callbackRoot.setSite = true;
-          await this._siteStore.pushSiteArray({ site: config.siteArray,title: "",domain:""},true);
+          await this.pushSiteArray({ site: config.siteArray,title: "",domain:""},true);
           await this.setSite(site || config.siteArray);
-          let user = await this._auth.getUser();
+          let user = await this.getUser();
           if(user){
             callbackRoot.auth = true;
           }
           return callbackRoot;
         }
         await this.setSite(site || config.site);
-        let user = await this._auth.getUser();
+        let user = await this.getUser();
         if(user){
           callbackRoot.auth = true;
         }
@@ -165,7 +158,7 @@ export class SiteService{
       }else if(!config.user && config.site){
         if(config.siteArray){
           callbackRoot.setSite = true;
-          await this._siteStore.pushSiteArray({site: config.siteArray,title: "",domain:""},true);
+          await this.pushSiteArray({site: config.siteArray,title: "",domain:""},true);
           await this.setSite(site || config.siteArray);
           return callbackRoot;
         }
@@ -207,7 +200,6 @@ export class SiteService{
   selectLanguage(lang:any){
     this.translate.use(lang);
   }
-
   async appInit(){
     this.translate.setDefaultLang('en');
     ImgCache.init();
@@ -218,18 +210,29 @@ export class SiteService{
     return 1;
   }
 
+  async getConfigApp(){
+    return await this.config?this.config:App;
+  }
+  
+  async getUser(){
+    let config = await this.getConfigApp();
+    let site = await this.getSite();
+    let callback = await this.storage.get(config.app+'_'+site+'_user');
+    return JSON.parse(callback);
+  }
+
   //Main Site
   async setSite(site: string){
     let config = await this.getConfigApp();
     if(this.checkCreateTable){
-      await this._siteStore.setSite(site);
+      await this.storage.set(config.app+this.site,site);
       let checked = await this.checkTable(this.devMode);
       if(checked){
         return 1;
       }
       return 0;
     }
-    await this._siteStore.setSite(site);
+    await this.storage.set(config.app+this.site,site);
     if(config.platform == "web"){
       await this.loadTheme({load:false});
       return 1;
@@ -238,19 +241,172 @@ export class SiteService{
     return 1;
   }
   
-  
+  async getSite(){
+    let config = await this.getConfigApp();
+    let site = await this.storage.get(config.app+this.site);
+    return site;
+  }
+
+  //Array
+  async selectSiteArray(site: SiteArray){
+    if(site){
+      let array = await this.getSiteArray();
+      if(array.data.domain != site.domain){
+        array.data = site;
+        await this.setSite(array.data.site);
+        await this.setSiteArray(array);
+        return array;
+      }
+    }
+    return 0;
+  }
+  async checkRepeatSiteArray(domain: string){
+    let array = await this.getSiteArray();
+    if(array){
+      let check = true;
+      array.array.forEach((item:any)=>{
+        if(item.domain === domain){
+          check = false;
+        }
+      });
+      return check;
+    }
+    return 1;
+  }
+
+  async alertRemoveSite(){
+    return new Promise<any>((resolve,reject)=>{
+      let alert = this.alertCtrl.create({
+                  title: 'Attention',
+                  subTitle: this.textAlertRemove,
+                  buttons: [{
+                      text: 'Yes',
+                      handler: () => {
+                         resolve(1);
+                      }
+                   }]
+      });
+      alert.present();
+    });
+  }
+
+  async removeSiteArray(site:SiteArray){
+    let array = await this.getSiteArray();
+    if(array){
+      if(array.array.length > 1){
+        let confirm = await this.alertRemoveSite();
+        if(confirm){
+          array.array = _.filter(array.array,(elem)=>(elem as any).site != site.site);
+          if(site.site == array.data.site){
+            array.data = array.array[0];  
+          }
+          let siteCallback = await this.updateSiteArray(array);
+          let toast = this.toastCtrl.create({
+            message:this.textToastSiteRemove,
+            duration:500,
+            position:"top"
+          })
+          toast.present();
+          return siteCallback;
+        }
+        return 0;
+      }
+      let alert = this.alertCtrl.create({
+        title: 'Attention',
+        subTitle: this.textAlertRemoveLastOne,
+        buttons: [{
+            text: 'Yes',
+            handler: () => {
+            }
+         }]
+      });
+      alert.present();
+    }
+    return 0;
+  }
+
+  async pushSiteArray(site:SiteArray,force=false){
+    let arraySite:any;
+    if(force){
+      arraySite = <Site>{};
+      arraySite.data = site;
+      arraySite.array = [];
+      arraySite.array.push(site);
+      let siteCallback = await this.updateSiteArray(arraySite);
+      return siteCallback;
+    }
+    let callback = await this.getSiteArray();
+    if(callback){
+      arraySite = callback;
+    }else{
+      arraySite = <Site>{};
+      arraySite.data = site;
+      arraySite.array = [];
+    }
+    arraySite.array.push(site);
+    let siteCallback = await this.updateSiteArray(arraySite);
+    return siteCallback;
+  }
+
+  async getSiteArray(update=false){
+    let config = await this.getConfigApp();
+    let site = await this.storage.get(config.app+this.siteArray);
+    if(update){
+      let callback = await this.updateMainSiteArray(site);
+      return callback;
+    }
+    return site;
+  }
+
+  async updateSiteArray(site:Site){
+    let save = await this.setSiteArray(site);
+    if(save){
+      let number = await this.getSite();
+      if(!number){
+        let callback = await this.updateMainSiteArray(site);
+        return callback;
+      }
+      return site;
+    }
+    return 0;
+  }
+
+  async updateMainSiteArray(site:Site){
+    if(site){
+      let mainSite = site.data.site || false;
+      if(mainSite){
+         let callback = await this.setSite(mainSite);
+          return site;
+      }
+      return 0;
+    }
+    return site;
+  }
+
+  async setSiteArray(site:Site){
+    let config = await this.getConfigApp();
+    await this.storage.set(config.app+this.siteArray,site);
+    return 1;
+  }
+
   //Check Table Site
   async setCheckTable(status:any){
-    return await this.storage.setLocal(this.localCheckTable,status);
+    let site = await this.getSite();
+    let config = await this.getConfigApp();
+    await this.storage.set(config.app+"_"+site+this.localCheckTable,status);
+    return 1;
   }
 
   async getCheckTable(){
-    return await this.storage.getLocal(this.localCheckTable);
+    let site = await this.getSite();
+    let config = await this.getConfigApp();
+    let status = await this.storage.get(config.app+"_"+site+this.localCheckTable);
+    return status;
   }
 
   async checkTable(force=false){
     let aleready = async (loader:any) =>{
-        let site = await this._siteStore.getSite();
+        let site = await this.getSite();
         let config = await this.getConfigApp();
         let tableNotHave = <any>[];
         let table = (config[config.app].json_table).slice();
@@ -397,7 +553,19 @@ export class SiteService{
       if(load){
         loading.present();
       }
-      let theme = await this._data.app_setting();
+      let site = await this.getSite();
+      if(site){
+        let theme;
+        let db = setting[setting.app].database;
+        if(db == dbFirebase){
+          let ref = firebase.database().ref().child(site);
+          let snap = await ref.child('app_setting/0').once('value');
+          theme = snap.val();
+        }else if(db == dbFirestore){
+          let ref = await firebase.firestore().collection(site+"/app_setting/lists").doc('0').get();
+          theme = ref.data();
+        }
+        
         try{
           if(theme){
             if(ImgCache.ready){
@@ -416,17 +584,20 @@ export class SiteService{
           return 1;
         }catch(e){
          // error
+        }
       }
       await loading.dismiss();
       return 1;
     }
   }
   async setTheme(theme:any){
-    return await this.storage.setLocal(this.theme,theme);
+    let site = await this.getSite();
+    await this.storage.set(site+this.theme,theme);
+    return 1;
   }
-
   async getTheme(){
-    return await this.storage.getLocal(this.theme);
+    let site = await this.getSite();
+    let callback = await this.storage.get(site+this.theme);
+    return callback;
   }
-  
 }

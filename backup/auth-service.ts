@@ -1,10 +1,9 @@
 import { Injectable } from "@angular/core";
 import { AngularFireDatabase } from 'angularfire2/database';
-import { SiteStorage  } from './site-storage';
+import { StorageService } from './storage-service';
 import { QueryService } from './query-service';
-import { DataService } from './data-service';
-import { ToastController } from 'ionic-angular';
-import { StorageService} from './storage-service';
+import {ToastController} from 'ionic-angular';
+import {SiteService} from './site-service';
 import 'rxjs/add/operator/take'
 import * as tsfirebase from 'firebase/app';
 
@@ -37,7 +36,7 @@ export class AuthService {
   textAlertWrongUserPassword = "Wrong User or Password";
   textAlertFilUserPassword = "Please Fill User or Password";
   textAlertCannotPermissions = "This Users Not have permission";
-  constructor(public afauth:AngularFireAuth,public _data:DataService,public _query:QueryService,public _siteStore:SiteStorage,public af: AngularFireDatabase,public googleplus: GooglePlus,private fb: Facebook,public toastCtrl:ToastController, public storage: StorageService, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
+  constructor(public afauth:AngularFireAuth,public _query:QueryService,public _site:SiteService,public af: AngularFireDatabase,public googleplus: GooglePlus,private fb: Facebook,public toastCtrl:ToastController, public storage: StorageService, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
   }
 
   async getUser(){
@@ -120,7 +119,7 @@ export class AuthService {
     if(loading){
        loader.present(); 
     }
-    let site = await this._siteStore.getSite();
+    let site = await this._site.getSite();
     let ref = firebase.database().ref().child((site as any));
     let hash = sha1(data['email']+provider);
     data['id'] = hash;
@@ -145,7 +144,7 @@ export class AuthService {
   async insertUserEmail(data){
     let loader = this.loadingCrtl.create();
     loader.present(); 
-    let site = await this._siteStore.getSite();
+    let site = await this._site.getSite();
     if(site){
       let ref = firebase.database().ref().child((site as any));
       let hash = sha1(data['email']);
@@ -195,13 +194,13 @@ export class AuthService {
     if(domain){
       let loader = this.loadingCrtl.create();
       loader.present(); 
-      let notRepeat = await this._siteStore.checkRepeatSiteArray(domain);
+      let notRepeat = await this._site.checkRepeatSiteArray(domain);
       if(notRepeat || change_site){
         var protomatch = /^(https?|ftp):\/\//;
         domain = domain.replace(protomatch,'');
         domain = domain.replace('/','');
         let hash = sha1(domain);
-        let snap = await this._data.site_domain({domain,load:false});
+        let snap = await this._query.auth_site({site:hash});
         if(snap != null){
           await loader.dismiss();
           let siteRef = snap.ref;
@@ -211,7 +210,7 @@ export class AuthService {
           if(siteRef && siteDomain){
             if(type == "list"){
               item = { site:siteRef,title:siteTitle,domain:siteDomain };
-              let array = await this._siteStore.pushSiteArray(item,change_site);
+              let array = await this._site.pushSiteArray(item,change_site);
               if(array){
                 let toast = this.toastCtrl.create({
                   message:this.textToastAddSite,
@@ -223,7 +222,7 @@ export class AuthService {
               }
               return 0;
             }else if(type == "object"){
-              let callback = await this._siteStore.setSite(siteRef);
+              let callback = await this._site.setSite(siteRef);
               let toast = this.toastCtrl.create({
                 message:this.textToastAddSite,
                 duration:500,
@@ -243,7 +242,7 @@ export class AuthService {
           }]
         });
         alert.present();
-        return Promise.reject({message:this.textToastWrongDomain});
+        return 0;
       }
       await loader.dismiss();
       let toast = this.toastCtrl.create({
@@ -252,7 +251,7 @@ export class AuthService {
         position:"top"
       });
       toast.present();
-      return Promise.reject({message:this.textToastDomainRepeat});
+      return 0;
     }
     let alert = this.alertCtrl.create({
       message:this.textAlertFillDomain,
@@ -261,14 +260,13 @@ export class AuthService {
       }]
     });
     alert.present();
-    return Promise.reject({message:this.textAlertFillDomain});
+    return 0;
   }
 
   async login(user,password,permissions=[]){
     if(user && password){
       let hash = sha1(user);
-      let callback = await this._data.user_login({email:user,password:password,load:true});
-
+      let callback = await this._query.auth_user({username:user,password:password,hash,load:true});
       if(callback && this._query.getDatabase() == dbFirebase || callback && this._query.getDatabase() == dbFirestore){
         let input = sha1(password+callback.salt);
         if(input === callback.password){
@@ -281,7 +279,7 @@ export class AuthService {
               }]
             });
             alert.present();
-            return Promise.reject({message:this.textAlertCannotPermissions});
+            return 0;
           }
           await this.storage.setLocal(this.user,callback);
           return 1;
@@ -293,7 +291,7 @@ export class AuthService {
           }]
         });
         alert.present();
-        return Promise.reject({message:this.textAlertWrongUserPassword});
+        return 0;
       }else if(callback && callback.user && this._query.getDatabase() == dbMysql){
         await this.storage.setLocal(this.user,callback.user);
         return 1;
@@ -305,7 +303,7 @@ export class AuthService {
         }]
       });
       alert.present();
-      return Promise.reject({message:this.textAlertWrongUserPassword});
+      return 0;
     }
     let alert = this.alertCtrl.create({
     message:this.textAlertFilUserPassword,
@@ -315,7 +313,7 @@ export class AuthService {
         }]
     });
     alert.present();
-    return Promise.reject({message:this.textAlertFilUserPassword});
+    return 0;
   }
 
   async logout(){

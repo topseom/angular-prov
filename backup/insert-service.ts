@@ -1,8 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AngularFireDatabase } from 'angularfire2/database';
-import { AuthService } from './auth-service';
-import { SiteStorage } from './site-storage';
-
+import { SiteService } from './site-service';
 import { QueryService } from './query-service';
 import { LoadingController } from 'ionic-angular';
 import * as tsmoment from 'moment';
@@ -17,7 +15,7 @@ export class InsertService{
 	table_order_single = "order_single";
 	table_order_address = "order_address";
 
-	constructor(public _query:QueryService,public _siteStore:SiteStorage,public loadCtrl:LoadingController,public af:AngularFireDatabase,public _auth:AuthService){
+	constructor(public _query:QueryService,public _site:SiteService,public loadCtrl:LoadingController,public af:AngularFireDatabase){
 
 	}
  	async db(database : Database){
@@ -37,12 +35,12 @@ export class InsertService{
 		let loading = option.loading || false;
 		let method = option.method || "push";
 		let loader = this.loadCtrl.create();
-		let site = await this._siteStore.getSite();
+		let site = await this._site.getSite();
 		if(site && option.table && data){
 			if(loading){
 				loader.present();
 			}
-			let user = await this._auth.getUser();
+			let user = await this._site.getUser();
 			data['created_by'] = (user as any).id || false;
 			data['created'] = moment().format('YYYY-MM-DD HH:mm:ss');
 			if(method == "push"){
@@ -61,10 +59,10 @@ export class InsertService{
 	}
 
     async json(option){
-		let site = await this._siteStore.getSite();
+		let site = await this._site.getSite();
 		if(site && option.table && option.data){
-			//let callback = await this._query.json_post(option,site);
-			//return callback;
+			let callback = await this._query.json_post(option,site);
+			return callback;
 		}
 		return 0;
 	}

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AngularFireDatabase } from 'angularfire2/database';
-import { SiteStorage } from './site-storage';
+import { SiteService } from './site-service';
 import { QueryService } from './query-service';
 import { LoadingController } from 'ionic-angular';
 //import * as moment from 'moment';
@@ -15,7 +15,7 @@ export class DeleteService{
 	table_order_single = "order_single";
 	table_order_address = "order_address";
 
-	constructor(public _query:QueryService,public _siteStore:SiteStorage,public loadCtrl:LoadingController,public af:AngularFireDatabase){
+	constructor(public _query:QueryService,public _site:SiteService,public loadCtrl:LoadingController,public af:AngularFireDatabase){
 
 	}
 	async db(database : Database){
@@ -29,12 +29,12 @@ export class DeleteService{
 	}
 
 	async json(option){
-			let site = await this._siteStore.getSite();
+			let site = await this._site.getSite();
 			if(site && option.table && option.method){
 				let method = option.method;
 				if(method == "get"){
-					//let callback = await this._query.json_get(option,site);
-					//return callback;
+					let callback = await	this._query.json_get(option,site);
+					return callback;
 				}else if(method == "post"){
 						//resolve(this.json_post(option,site));
 				}

@@ -1,11 +1,11 @@
 import {Injectable} from "@angular/core";
 import {Storage} from '@ionic/storage';
 import 'rxjs/add/operator/take'
-import { AlertController,LoadingController } from 'ionic-angular';
-import { SiteStorage } from './site-storage';
-import { QueryService, Options  } from './query-service';
+import {AlertController,LoadingController} from 'ionic-angular';
+import {SiteService} from './site-service';
+import {QueryService} from './query-service';
 import ImgCache from 'imgcache.js';
-import { table,api } from './interface';
+import { table } from './interface';
 import * as _ from 'lodash';
 
 export class Setting{
@@ -31,7 +31,7 @@ export class StorageService {
   storeLocal = "dataSet";
   settingTitle = "setting";
   
-  constructor(public _query:QueryService,public _siteStore:SiteStorage,public storage: Storage, public alertCtrl:AlertController,public loadingCtrl:LoadingController) {
+  constructor(public _query:QueryService,public _site:SiteService,public storage: Storage, public alertCtrl:AlertController,public loadingCtrl:LoadingController) {
   }
 
   storageList(){
@@ -42,9 +42,9 @@ export class StorageService {
   }
 
   async setLocal(title,data){
-    let site = await this._siteStore.getSite();
+    let site = await this._site.getSite();
     if(site){
-      let config = await this._siteStore.getConfigApp();
+      let config = await this._site.getConfigApp();
       let callback = await this.storage.set(config.app+'_'+site+'_'+title,JSON.stringify(data));
       return 1;
     }
@@ -52,8 +52,8 @@ export class StorageService {
   }
 
   async getLocal(title){
-    let site = await this._siteStore.getSite();
-    let config = await this._siteStore.getConfigApp();
+    let site = await this._site.getSite();
+    let config = await this._site.getConfigApp();
     let cache = await this.storage.get(config.app+'_'+site+'_'+title);
     return JSON.parse(cache);
   }
@@ -73,8 +73,8 @@ export class StorageService {
   }
 
   async removeLocal(title){
-    let site = await this._siteStore.getSite();
-    let config = await this._siteStore.getConfigApp();
+    let site = await this._site.getSite();
+    let config = await this._site.getConfigApp();
     let cache = await this.storage.remove(config.app+'_'+site+'_'+title);
     return cache;
   }
@@ -117,7 +117,7 @@ export class StorageService {
       let data = [];
       switch(table_argument){
         case table.product_list:
-          data = await this._query.query(table.product_list,new Options({method:"get", api:api.product_list}));
+          data = await this._query.product_listAll({});
           // have image (image.image)
           if(data && data.length > 0){
             let images = data.map((img)=>img.image);
@@ -127,13 +127,12 @@ export class StorageService {
           return data;
         case table.product_category:
           // no image
-        
-          return await this._query.query(table.product_list,new Options({method:"get",api:api.product_category}));
+          return await this._query.product_category({});
         case table.product_barcode:
-          return await this._query.query(table.product_barcode,new Options());
+          return await this._query.product_barcode({});
         case table.product_single:
           // have image (image_c,image_array)
-          data = await this._query.query(table.product_single,new Options({method:"get",api:api.product_single}));
+          data = await this._query.product_single({});
           if(data && data.length > 0){
             let images = [];
             data.forEach(result=>{
@@ -149,9 +148,9 @@ export class StorageService {
           return data;
         case table.blog_category:
           // no image
-          return await this._query.query(table.product_category,new Options({method:"get",api:api.blog_category}));
+          return await this._query.blog_categories({});
         case table.blog_list:
-          data = await this._query.query(table.blog_list,new Options({method:"get",api:api.blog_list}));
+          data = await this._query.blog_listAll({});
           if(data && data.length > 0){
             let images = data.map((result)=>result.image_t);
             await _images.addImage(images);
@@ -159,10 +158,10 @@ export class StorageService {
           return data;
         case table.gallery_category:
           // no image
-          return await this._query.query(table.gallery_category,new Options({method:"get",api:api.gallery_category}));
+          return await this._query.gallery_category({});
         case table.gallery_single:
           // have image (image and array=>galleries->path)
-          data = await this._query.query(table.gallery_single,new Options({method:"get",api:api.gallery_single}));
+          data = await this._query.gallery_single({});
           if(data && data.length > 0){
             let images = [];
             data.forEach(result=>{
@@ -178,7 +177,7 @@ export class StorageService {
           return data;
         case table.navigation:
           // have image (image.icon_image.path)
-          data = await this._query.query(table.navigation,new Options({method:"get",api:api.navigation}));
+          data = await this._query.navigations({});
           if(data && data.length > 0){
             let images = await this.forImageChildren(data,"children",[]);
             images = images.map((img)=>img.icon_image && img.icon_image.path);
@@ -189,7 +188,7 @@ export class StorageService {
 
         case table.page_single:
           // have image in (html=>body)
-          data = await this._query.query(table.page_single,new Options({method:"get",api:api.page_single}));
+          data = await this._query.page_single({});
           let rex = /<img[^>]+src="?([^"\s]+)"/g;
           let images_page = [];
           if(data && data.length > 0){
@@ -211,7 +210,7 @@ export class StorageService {
           return data;
         case table.portfolio_category:
           // have image (image.image)
-          data = await this._query.query(table.portfolio_category,new Options({method:"get",api:api.portfolio_category}));
+          data = await this._query.portfolio_categories({});
           if(data && data.length > 0){
             let images = data.map((result)=>result.image);
             await _images.addImage(images);
@@ -219,7 +218,7 @@ export class StorageService {
           return data;
         case table.portfolio_single:
           // have image (image.images)
-          data = await this._query.query(table.portfolio_single,new Options({method:"get",api:api.portfolio_single}))
+          data = await this._query.portfolio_single({});
           if(data && data.length > 0){
             let images = [];
             images = data.map((result)=>result.images).reduce((array,result)=>array.concat(result));
@@ -227,11 +226,11 @@ export class StorageService {
           }
           return data;
         case table.order_single:
-          return await this._query.query(table.order_single,new Options());
+          return await this._query.order_single({});
         case table.users_single:
-          return await this._query.query(table.users_single,new Options({ method:"get",api:api.users_single}));
+          return await this._query.users_single({});
         case table.form_config:
-          return await this._query.query(table.form_config,new Options());
+          return await this._query.form_config({});
         case table.images:
           let images = _images.getImages();
           await this.saveImage(images);
