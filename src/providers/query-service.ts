@@ -21,7 +21,8 @@ let setting = App;
 export class Query{
   options:Options;
   constructor(table,object:Options){
-      this.options = {table,...object};
+      this.options = {...object,table};
+      console.log("Query",table,this.options);
   }
 }
 
@@ -80,6 +81,7 @@ export class QueryService {
   async db(args : Query){
     let database = args['database']?args['database']:this.getDatabase();
     args.options.ref = await this._siteStore.getSite();
+    console.log("ARGS",args);
     if(!args.options.table){
       return Promise.reject({message:"not found table"});
     }
@@ -106,6 +108,7 @@ export class QueryService {
   //Firebase
   async firebase(options:Options){
     options.table = options.table+'/'+options.table_path;
+    console.log("TABLE",options.table);
     if(options.realtime){
       if(options.where.length && options.limit){
         let where = new Where(options.where[0]);

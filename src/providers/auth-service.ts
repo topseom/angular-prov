@@ -267,12 +267,24 @@ export class AuthService {
   async login(user,password,permissions=[]){
     if(user && password){
       let hash = sha1(user);
-      let callback = await this._data.user_login({email:user,password:password,load:true});
+      let callback;
+      try{
+        callback = await this._data.user_login({email:user,password:password,load:true});
+      }catch(e){
+        let alert = this.alertCtrl.create({
+          message:this.textAlertWrongUserPassword,
+          buttons:[{
+            text:"Ok"
+          }]
+        });
+        alert.present();
+        return Promise.reject({message:this.textAlertWrongUserPassword});
+      }
 
       if(callback && this._query.getDatabase() == dbFirebase || callback && this._query.getDatabase() == dbFirestore){
         let input = sha1(password+callback.salt);
         if(input === callback.password){
-          let groups = permissions['group_id'].find(data=>data === callback.group_id);
+
           if(permissions['group_id'] && !permissions['group_id'].find(data=>data === callback.group_id)){
             let alert = this.alertCtrl.create({
               message:this.textAlertCannotPermissions,
@@ -285,15 +297,10 @@ export class AuthService {
           }
           await this.storage.setLocal(this.user,callback);
           return 1;
+
         }
-        let alert = this.alertCtrl.create({
-          message:this.textAlertWrongUserPassword,
-          buttons:[{
-            text:"Ok"
-          }]
-        });
-        alert.present();
-        return Promise.reject({message:this.textAlertWrongUserPassword});
+        
+       
       }else if(callback && callback.user && this._query.getDatabase() == dbMysql){
         await this.storage.setLocal(this.user,callback.user);
         return 1;

@@ -139,8 +139,10 @@ export class DataService{
 			}
 			return data;
 		}else{
+			console.log("CONFIG",config);
 			//let data = await config.query.func.bind(this._query)(config.query.param);
 			let data = await this._query.query(config.table,config.options);
+			console.log("DATA",data);
 			return data;
 		}
 	}
@@ -168,6 +170,8 @@ export class DataService{
 			options:new Options({ loading:load,where:[{key:'abbrev',value:'mobile'}],method:"get",api:api.navigation })
 		}
 		let callback = await this.data_generate(option);
+		callback = callback[0].navigations ? callback[0].navigations : callback;
+		console.log("CALLBACK",callback);
 		if(slide){
 			let module = await this.slideModuleInit(callback,slide_limit);
 			return module;
@@ -336,6 +340,7 @@ export class DataService{
 			}
 		}
 		let callback = await this.data_generate(option);
+		callback = callback[0] ? callback[0] : callback;
 		return callback['body'];
 	}
 	  
@@ -393,7 +398,7 @@ export class DataService{
 		option = {
 			table:table.product_list,
 			offline:offline,
-			options:new Options({ loading:load,where:[{key:"category_"+id,value:"1"}],method:"get",api:api.product_category_id+"/"+id }),
+			options:new Options({ loading:load,where:[({key:"category/category_"+id,value:true} as any)],method:"get",api:api.product_category_id+"/"+id }),
 			filter:{
 				parent_key:"category",
 				key:"category_"+id,
@@ -659,6 +664,7 @@ export class DataService{
 			options:new Options({ loading:load,where:[{key:"email",value:email}],data:{username:email,password:password},method:"post",api:api.user_login })
 		}
 		let callback = await this.data_generate(option);
+		callback = callback[0]?callback[0]:callback;
 		return callback;
 	}
 	
