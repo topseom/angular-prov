@@ -397,8 +397,9 @@ export class SiteService{
       if(load){
         loading.present();
       }
-      let theme = await this._data.app_setting();
-        try{
+      
+      try{
+          let theme = await this._data.app_setting({load:false});
           if(theme){
             if(ImgCache.ready){
               await ImgCache.cacheFile(theme.setting_logo?theme.setting_logo:false,async data=>{
@@ -414,11 +415,11 @@ export class SiteService{
           await loading.dismiss();
           await this.setTheme({theme:false});
           return 1;
-        }catch(e){
-         // error
+      }catch(e){
+          await loading.dismiss();
+          return 1;
       }
-      await loading.dismiss();
-      return 1;
+      
     }
   }
   async setTheme(theme:any){

@@ -195,7 +195,7 @@ export class DataService{
 		option = {
 			table:table.blog_list,
 			offline:offline,
-			options:new Options({ loading:load,method:"get",api:api.blog_list_category+"/"+id}),
+			options:new Options({ loading:load, where:[{key:"category",value:id }] ,method:"get",api:api.blog_list_category+"/"+id}),
 			filter:{
 				key:"category",
 				value:id
@@ -547,12 +547,12 @@ export class DataService{
 				}
 			}
 		}else{
-			let option:Config;
-			option = {
+			let option_config:Config;
+			option_config = {
 				table:table.product_filter,
 				options:new Options({ loading:load,method:"post",api:api.product_filter,data:{option,cate_id} })
 			}
-			let callback = await this.data_generate(option);
+			let callback = await this.data_generate(option_config);
 			return callback;
 		}
 	}
