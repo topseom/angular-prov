@@ -1,172 +1,99 @@
 import { Injectable } from '@angular/core';
 import { AngularFireDatabase } from 'angularfire2/database';
+import { AngularFirestore } from 'angularfire2/firestore';
 import { AuthService } from './auth-service';
 import { SiteStorage } from './site-storage';
 
-import { QueryService } from './query-service';
+import { QueryService,Options,Query } from './query-service';
 import { LoadingController } from 'ionic-angular';
 import * as tsmoment from 'moment';
 const moment = tsmoment;
-//import * as firebase from 'firebase/app';
 
-//dbFirebase
-import { Database,dbMysql } from './interface';
+import { Database,dbMysql,dbFirebase,dbFirestore,table,api } from './interface';
 
 @Injectable()
 export class InsertService{
-	table_order_single = "order_single";
-	table_order_address = "order_address";
 
-	constructor(public _query:QueryService,public _siteStore:SiteStorage,public loadCtrl:LoadingController,public af:AngularFireDatabase,public _auth:AuthService){
-
-	}
- 	async db(database : Database){
-		let db = database;
-	    if(db.firebase){
-	        return await this.firebase(db.firebase);
-	    }else if(db.json){
-	        return await this.json(db.json);
-		}
-		return 0;
-  	}
-
-  	// Firebase
-    async firebase(option){
-		let data = option.data || false;
-		let table = option.table || false;
-		let loading = option.loading || false;
-		let method = option.method || "push";
-		let loader = this.loadCtrl.create();
-		let site = await this._siteStore.getSite();
-		if(site && option.table && data){
-			if(loading){
-				loader.present();
-			}
-			let user = await this._auth.getUser();
-			data['created_by'] = (user as any).id || false;
-			data['created'] = moment().format('YYYY-MM-DD HH:mm:ss');
-			if(method == "push"){
-				let callback = await this.af.list(site+"/"+table).push(data);
-				await loader.dismiss();
-				return callback; 
-			}else if(method == "set" && data['id']){
-				let callback = await this.af.object(site+"/"+table+'/'+data['id']).set(data);
-				await loader.dismiss();
-				return 1; 
-			}
-			await loader.dismiss();
-			return 0;
-		}
-		return 0;
-	}
-
-    async json(option){
-		let site = await this._siteStore.getSite();
-		if(site && option.table && option.data){
-			//let callback = await this._query.json_post(option,site);
-			//return callback;
-		}
-		return 0;
-	}
-	  
-    async user_form_firebase_insert(data,type,load=true){
-		let insert:Database;
-		insert = {
-			firebase:{
-				table: "form/users/"+type,
-				loading:load,
-				method:"set",
-				data:data
-			}
-		}
-		let callback = await this.db(insert);
-		return callback;
-	}
-	  
-    async user_form_json_insert(data,load=true){
-		let insert:Database;
-		insert = {
-			json:{
-			  table:"json_insert_user_form",
-			  loading:load,
-			  method:"post",
-			  data:{
-				  data:data
-			  } 
-			   }
-		}
-		let callback = await this.db(insert);
-		return callback;
-  	}
-
-    async user_form_insert_to_firebase(data,load=true){
-		let insert:Database;
-		insert = {
-		  json:{
-			table:"json_insert_user_form_to_firebase",
-			loading:load,
-			method:"post",
-			data:{
-				json:data['json'],
-				firebase:data['firebase'],
-				path:"form/users/"+data['type']
-			} 
-			 }
-		}
-		let callback = await this.db(insert);
-		return callback;
-	}
-	  
-    async user_form_insert(data,load=true){
-		if(this._query.getDatabase() == dbMysql){
-			let insert:Database;
-			insert = {
-				json:{
-				  table:"json_insert_user_form",
-				  loading:load,
-				  method:"post",
-				  data:{
-					  data:data
-				  } 
-				}
-			}
-			let callback = await this.db(insert);
-			return callback;
-		}
-		return 0;
-  	}
-
-    async order_address_insert(data){
-		let insert:Database;
-		insert = {
-			  json:{
-				table:"json_insert_address_firebase",
-				loading:true,
-				method:"post",
-				data:{
-					data:data
-				} 
-				 }
-		}
-		let callback = await this.db(insert);
-		return callback;
-	}
-
-    async order_insert(data,type=""){
-		let insert:Database;
-		insert = {
-			json:{
-			  table:"json_insert_order_firebase",
-			  loading:true,
-			  method:"post",
-			  data:{
-				  data:data,
-				  type:type
-			  } 
-			   }
-		}
-		let callback = await this.db(insert);
-		return callback;
+	api_version = "v1/";
+	api_type = "insert/";
+	lists = "/lists";
+	
+	constructor(public _query:QueryService,public _siteStore:SiteStorage,public loadingCtrl:LoadingController,public af:AngularFireDatabase,public afs:AngularFirestore,public _auth:AuthService){
 	}
 	
+	async query(table:string,options:Options){
+    return await this.db(new Query(table,options));
+	}
+	
+ 	async db(args:Query){
+		let database = args['database']?args['database']:this._query.getDatabase();
+		args.options.ref = await this._siteStore.getSite();
+		args.options.api_version = args.options.api_version?args.options.api_version:this.api_version;
+		args.options.api_type = args.options.api_type?args.options.api_type:this.api_type;
+		args.options.table = args.options.table_path ? args.options.table+'/'+args.options.table_path : args.options.table ;
+		if(!args.options.table){
+      return Promise.reject({message:"not found table",status:404});
+		}
+		if(!args.options.data){
+			return Promise.reject({message:"not found data to save",status:404})
+		}
+	  if(database == dbFirebase){
+	      return await this.firebase(args.options);
+	  }else if(database == dbFirestore){
+	      return await this.firestore(args.options);
+		}else if(database == dbMysql){
+				return await this._query.api(args.options);
+		}
+		return Promise.reject({message:"not found database",status:404});
+	}
+
+	async firebase(options:Options){
+		let loader = this.loadingCtrl.create();
+		if(options.loading){
+      loader.present();
+		}
+		if(options.method == "post"){
+			await this.af.object(options.ref+"/"+options.table+'/'+options.data['id']).set(options.data);
+			await loader.dismiss();
+			return 1;
+		}else if(options.method == "push"){
+			await this.af.list(options.ref+"/"+options.table).push(options.data);
+			await loader.dismiss();
+			return 1;
+		}
+		return Promise.reject({message:"not found method api firebase to get data!",status:404});
+	}
+
+	async firestore(options:Options){
+		let loader = this.loadingCtrl.create();
+		if(options.loading){
+      loader.present();
+		}
+		if(options.method == "post"){
+			await this.afs.doc(options.ref+"/"+options.table+'/'+this.lists+'/'+options.data['id']).set(options.data);
+			await loader.dismiss();
+			return 1;
+		}else if(options.method == "push"){
+			await this.afs.collection(options.ref+"/"+options.table+'/'+this.lists).add(options.data);
+			await loader.dismiss();
+			return 1;
+		}
+		return Promise.reject({message:"not found method api firestore to get data!",status:404});
+	}
+
+	async user_form({data,type,load=true,database=dbFirebase}){
+		if(!type){
+			return Promise.reject({message:"not found type",status:400});
+		}
+		return await this.query(table.form_list,new Options({ 	table_path:"users/"+type,data,database,loading:load }));
+	}
+
+	async users_single({email,password,profile={},load=true }){
+		return await this.query(table.users_single,new Options({ method:"post",api:api.user_single_insert,data:{email,password,...profile},database:dbMysql }));
+	}
+
+	async order_single({data,load=true}){
+		return await this.query(table.order_single,new Options({ method:"post",api:api.order_single_insert,data,database:dbMysql }));
+	}
+
 }

@@ -46,6 +46,8 @@ export class Options{
   lastkey:string;
   method:string;
   api:string;
+  api_type:string;
+  api_version:string;
   data={};
   type:string;
   database:string;
@@ -53,8 +55,8 @@ export class Options{
   where:Array<{key:string,value:any}>;
   orderBy:string;
   loader={};
-  constructor({table="",ref="",loading=false,database="",data={},loader={},lastkey="",method="",api="",realtime=false,limit=0,page=0,where=[{key:"",value:""}],orderBy="",type="",table_path=""}={}){
-    this.table = table,this.ref = ref,this.loading=loading,this.realtime=realtime,this.page=page,this.where=where[0].key != ""?where:[],this.limit=limit,this.orderBy=orderBy,this.lastkey=lastkey,this.type=type,this.table_path = table_path,this.method=method,this.api=api,this.data=data;
+  constructor({table="",ref="",loading=false,database="",data={},loader={},lastkey="",method="",api="",api_type="",api_version="",realtime=false,limit=0,page=0,where=[{key:"",value:""}],orderBy="",type="",table_path=""}={}){
+    this.table = table,this.ref = ref,this.loading=loading,this.realtime=realtime,this.page=page,this.where=where[0].key != ""?where:[],this.limit=limit,this.orderBy=orderBy,this.lastkey=lastkey,this.type=type,this.table_path = table_path,this.method=method,this.api=api,this.data=data,this.api_type=api_type,this.api_version=api_version;
   }
 }
 
@@ -62,6 +64,9 @@ export class Options{
 @Injectable()
 export class QueryService {
   lists = "/lists";
+  api_version = "v1/";
+  api_type = "json/";
+
   constructor(@Inject('config') private config:any,private network: Network,private http: HttpClient,public _siteStore:SiteStorage,public af: AngularFireDatabase,public afs:AngularFirestore, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
     setting[setting.app].database = config.database?config.database:setting[setting.app].database;
   }
@@ -81,9 +86,10 @@ export class QueryService {
   async db(args : Query){
     let database = args['database']?args['database']:this.getDatabase();
     args.options.ref = await this._siteStore.getSite();
+    args.options.table = args.options.table_path ? args.options.table+'/'+args.options.table_path : args.options.table ;
     console.log("ARGS",args);
     if(!args.options.table){
-      return Promise.reject({message:"not found table"});
+      return Promise.reject({message:"not found table",status:404});
     }
     if(this.network.type && this.network.type == "none"){
       let alert = this.alertCtrl.create({
@@ -94,7 +100,7 @@ export class QueryService {
         }]
       });
       alert.present();
-      return Promise.reject({message:"not connect internet"});
+      return Promise.reject({message:"not connect internet",status:400});
     }else if(database == dbFirebase){
       return await this.firebase(args.options);
     }else if(database == dbFirestore){
@@ -102,12 +108,11 @@ export class QueryService {
     }else if(database == dbMysql){
       return await this.api(args.options);
     }
-    return Promise.reject({message:"not found database"});
+    return Promise.reject({message:"not found database",status:404});
   }
 
   //Firebase
   async firebase(options:Options){
-    options.table = options.table+'/'+options.table_path;
     console.log("TABLE",options.table);
     if(options.realtime){
       if(options.where.length && options.limit){
@@ -151,11 +156,10 @@ export class QueryService {
         return data;
       }
     }
-    return Promise.reject({message:"not found data"});
+    return Promise.reject({message:"not found data",status:404});
   }
   //Firestore
   async firestore(options:Options){
-    options.table = options.table+'/'+options.table_path;
     if(options.realtime){
       if(options.where.length && options.limit){
         let where = new Where(options.where[0]);
@@ -207,42 +211,44 @@ export class QueryService {
         return data;
       }
       await loader.dismiss();
-      return Promise.reject({message:"not found data"});
+      return Promise.reject({message:"not found data",status:404});
     }catch(e){
       await loader.dismiss();
-      return Promise.reject({message:e});
+      return Promise.reject({message:e,status:400});
     }
   }
 
   //Api
   async api(options:Options){
+    options.api_type = options.api_type ? options.api_type : this.api_type;
+    options.api_version = options.api_version ? options.api_version : this.api_version;
     let loader = this.loadingCrtl.create();
     if(options.loading){
       loader.present();
     }
     if(options.method == "get"){
       try{
-        let data = await this.http.get(this.getBaseUrl()+jsonController+options.api+'/'+options.ref).toPromise();
+        let data = await this.http.get(this.getBaseUrl()+jsonController+options.api_version+options.api_type+options.api+'/'+options.ref).toPromise();
         await loader.dismiss();
         return data;
       }catch(e){
         await loader.dismiss();
-        return Promise.reject({message:e});
+        return Promise.reject({message:e,status:400});
       }
-    }else if(options.method == "post"){
+    }else if(options.method == "post" || options.method == "push"){
       options.data['ref'] = options.ref;
       options.data['database'] = this.getDatabase();
       let body = JSON.stringify(options.data);
       try{
-        let data = await this.http.post(this.getBaseUrl()+jsonController+options.api+'/'+options.ref,body).toPromise();
+        let data = await this.http.post(this.getBaseUrl()+jsonController+options.api_version+options.api_type+options.api+'/'+options.ref,body).toPromise();
         await loader.dismiss();
         return data;
       }catch(e){
         await loader.dismiss();
-        return Promise.reject({message:e});
+        return Promise.reject({message:e,status:400});
       }
     }
-    return Promise.reject({message:"not found method api to get data!"});
+    return Promise.reject({message:"not found method api json to get data!",status:404});
   }
 
 }

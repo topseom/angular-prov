@@ -550,7 +550,7 @@ export class DataService{
 			let option_config:Config;
 			option_config = {
 				table:table.product_filter,
-				options:new Options({ loading:load,method:"post",api:api.product_filter,data:{option,cate_id} })
+				options:new Options({ loading:load,method:"post",api:api.product_filter,data:{option,cate_id}  })
 			}
 			let callback = await this.data_generate(option_config);
 			return callback;
@@ -678,7 +678,7 @@ export class DataService{
 				database:dbMysql,
 				data:{ ref },
 				type:"post",
-				api:"json_site"
+				api:api.site_single
 			})
 		}
 		let callback = await this.data_generate(option);
@@ -695,7 +695,7 @@ export class DataService{
 				database:dbMysql,
 				data:{ domain },
 				type:"post",
-				api:"json_site"
+				api:api.site_single
 			})
 		}
 		let callback = await this.data_generate(option);

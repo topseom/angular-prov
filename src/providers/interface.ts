@@ -32,7 +32,12 @@ export const api = {
     order_address_user:"json_address_user",
     users_single:"json_users",
     user_login:"json_login",
-    app_setting:"json_app_setting"
+    app_setting:"json_app_setting",
+    site_single:"json_site",
+    user_single_insert:"json_users_single",
+    order_single_insert:"json_order_single",
+    order_address_delete:"json_order_address",
+    order_address_update:"json_order_address"
 }
 export const table = {
     banner_single:"banner_single",
@@ -62,6 +67,7 @@ export const table = {
     stream_signup:"stream_signup",
     app_setting:"app_setting",
     form_config:"form/config",
+    form_list:"form",
     images:"images",
     site_list:"SITE/site_list/"
 }
@@ -70,8 +76,8 @@ export const dbFirebase = "firebase";
 export const dbFirestore = "firestore";
 export const dbMysql = "json";
 
-export const baseUrl = "https://seven.co.th/";
-export const jsonController = "domains/application/";
+export const baseUrl = "https://uat.seven.co.th/";
+export const jsonController = "domains/api/";
 export const firebaseController = "domains/firebase/";
 
 export interface FirebasePagination{

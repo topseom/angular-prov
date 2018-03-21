@@ -1,59 +1,73 @@
 import { Injectable } from '@angular/core';
 import { AngularFireDatabase } from 'angularfire2/database';
+import { AngularFirestore } from 'angularfire2/firestore';
 import { SiteStorage } from './site-storage';
-import { QueryService } from './query-service';
+import { QueryService,Query,Options } from './query-service';
 import { LoadingController } from 'ionic-angular';
 //import * as moment from 'moment';
 //import * as firebase from 'firebase/app';
 
 //dbFirebase
 //dbMysql
-import { Database } from './interface';
+import { Database,dbFirebase,dbFirestore,dbMysql,table,api } from './interface';
 
 @Injectable()
 export class DeleteService{
-	table_order_single = "order_single";
-	table_order_address = "order_address";
 
-	constructor(public _query:QueryService,public _siteStore:SiteStorage,public loadCtrl:LoadingController,public af:AngularFireDatabase){
+	api_version = "v1/";
+	api_type = "delete/";
+	lists = "/lists";
+
+	constructor(public _query:QueryService,public _siteStore:SiteStorage,public loadingCtrl:LoadingController,public af:AngularFireDatabase,public afs:AngularFirestore){
 
 	}
-	async db(database : Database){
-			let db = database;
-			if(db.firebase){
-				//resolve(this.firebase(db.firebase));
-			}else if(db.json){
-				return(this.json(db.json));
-			}
-			return 0;
+	
+	async query(table:string,options:Options){
+		return await this.db(new Query(table,options));
 	}
 
-	async json(option){
-			let site = await this._siteStore.getSite();
-			if(site && option.table && option.method){
-				let method = option.method;
-				if(method == "get"){
-					//let callback = await this._query.json_get(option,site);
-					//return callback;
-				}else if(method == "post"){
-						//resolve(this.json_post(option,site));
-				}
-			}
-			return 0;
+	async db(args:Query){
+		let database = args['database']?args['database']:this._query.getDatabase();
+		args.options.ref = await this._siteStore.getSite();
+		args.options.api_version = args.options.api_version?args.options.api_version:this.api_version;
+		args.options.api_type = args.options.api_type?args.options.api_type:this.api_type;
+		args.options.table = args.options.table_path ? args.options.table+'/'+args.options.table_path : args.options.table ;
+		if(!args.options.table){
+      		return Promise.reject({message:"not found table",status:404});
+		}
+		if(!args.options.data){
+			return Promise.reject({message:"not found index to delete",status:404})
+		}
+	  	if(database == dbFirebase){
+	      	return await this.firebase(args.options);
+	  	}else if(database == dbFirestore){
+	      	return await this.firestore(args.options);
+		}else if(database == dbMysql){
+			return await this._query.api(args.options);
+		}
+		return Promise.reject({message:"not found database",status:404});
+	}
+	async firebase(options:Options){
+		let loader = this.loadingCtrl.create();
+		if(options.loading){
+      		loader.present();
+		}
+		await this.af.object(options.ref+"/"+options.table+'/'+options.data['id']).remove();
+		await loader.dismiss();
+		return 1;
 	}
 
-	async order_address_delete(id,load=true){
-			let query = {
-				json:{
-					table:"json_delete_address_firebase/"+id,
-					method:"get",
-					loading:load,
-				}
-			}
-			let callback = await this.db(query);
-			if(callback){
-				return callback;
-			}
-			return 0;	
+	async firestore(options:Options){
+		let loader = this.loadingCtrl.create();
+		if(options.loading){
+      		loader.present();
+		}
+		await this.afs.doc(options.ref+"/"+options.table+'/'+this.lists+'/'+options.data['id']).delete();
+		await loader.dismiss();
+		return 1;
+	}
+
+	async order_address({id,load=true}){
+		return await this.query(table.order_address,new Options({ method:"post",api:api.order_address_delete,data:{id},database:dbMysql }));
 	}
 }
