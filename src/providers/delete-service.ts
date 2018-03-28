@@ -68,6 +68,6 @@ export class DeleteService{
 	}
 
 	async order_address({id,load=true}){
-		return await this.query(table.order_address,new Options({ method:"post",api:api.order_address_delete,data:{id},database:dbMysql }));
+		return await this.query(table.order_address,new Options({ method:"post",api:api.order_address_delete,data:{id},database:dbMysql,loading:load }));
 	}
 }

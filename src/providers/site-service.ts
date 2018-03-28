@@ -380,7 +380,7 @@ export class SiteService{
     let loading = this.loadingCrtl.create();
     loading.setContent(this.textLoadingTheme);
     let theme = await this.getTheme();
-    if(theme){
+    if(theme && !force){
       return 1;
     }else{
       if(this.network.type && this.network.type == "none"){

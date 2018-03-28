@@ -65,7 +65,7 @@ export class UpdateService{
 	}
 	
 	async order_address({id,update,load=true}){
-		return await this.query(table.order_address,new Options({ method:"post",api:api.order_address_update,data:{id,...update},database:dbMysql }));
+		return await this.query(table.order_address,new Options({ method:"post",api:api.order_address_update,data:{id,...update},database:dbMysql,loading:load }));
 	}
 
 }

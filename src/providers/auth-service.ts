@@ -2,6 +2,7 @@ import { Injectable } from "@angular/core";
 import { AngularFireDatabase } from 'angularfire2/database';
 import { SiteStorage  } from './site-storage';
 import { QueryService } from './query-service';
+import { InsertService } from './insert-service';
 import { DataService } from './data-service';
 import { ToastController } from 'ionic-angular';
 import { StorageService} from './storage-service';
@@ -37,7 +38,7 @@ export class AuthService {
   textAlertWrongUserPassword = "Wrong User or Password";
   textAlertFilUserPassword = "Please Fill User or Password";
   textAlertCannotPermissions = "This Users Not have permission";
-  constructor(public afauth:AngularFireAuth,public _data:DataService,public _query:QueryService,public _siteStore:SiteStorage,public af: AngularFireDatabase,public googleplus: GooglePlus,private fb: Facebook,public toastCtrl:ToastController, public storage: StorageService, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
+  constructor(public afauth:AngularFireAuth,public _data:DataService,public _query:QueryService,public _insert:InsertService,public _siteStore:SiteStorage,public af: AngularFireDatabase,public googleplus: GooglePlus,private fb: Facebook,public toastCtrl:ToastController, public storage: StorageService, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
   }
 
   async getUser(){
@@ -142,45 +143,13 @@ export class AuthService {
     }
   }
 
-  async insertUserEmail(data){
-    let loader = this.loadingCrtl.create();
-    loader.present(); 
-    let site = await this._siteStore.getSite();
-    if(site){
-      let ref = firebase.database().ref().child((site as any));
-      let hash = sha1(data['email']);
-      data['id'] = hash;
-      let users = ref.child('users_single/'+hash);
-      let snap = await users.once('value');
-      if(snap.val() != null){
-        await loader.dismiss();
-        let toast = this.toastCtrl.create({
-            message:this.textToastRegisterSameEmail,
-            duration:1000,
-            position:"top"
-        })
-        toast.present();
-        return 0;
-      }
+  async insertUserEmail({data,database="",load=true}){
+    if(database == dbFirebase || database == dbFirestore){
       data['salt'] = Math.random().toString(36).substring(7);
       data['password'] = sha1(data['password']+data['salt']);
-      try{
-        await users.set(data);
-        await loader.dismiss();
-        let toast = this.toastCtrl.create({
-          message:this.textToastRegisterSuccess,
-          duration:200,
-          position:"top"
-        })
-        toast.present();
-        return 1;
-      }catch(e){
-        await loader.dismiss();
-        return 0;
-      }
+      return await this._insert.users_single({email:data['email'],password:data['password'],profile:data,load,database});
     }
-    await loader.dismiss();
-    return 0;
+    return await this._insert.users_single({email:data['email'],password:data['password'],load,profile:data});
   }
 
   async setUser(data){
@@ -271,6 +240,7 @@ export class AuthService {
       try{
         callback = await this._data.user_login({email:user,password:password,load:true});
       }catch(e){
+        //console.log(e);
         let alert = this.alertCtrl.create({
           message:this.textAlertWrongUserPassword,
           buttons:[{
@@ -278,10 +248,11 @@ export class AuthService {
           }]
         });
         alert.present();
-        return Promise.reject({message:this.textAlertWrongUserPassword});
+        return Promise.reject({message:e.message});
       }
 
       if(callback && this._query.getDatabase() == dbFirebase || callback && this._query.getDatabase() == dbFirestore){
+        //console.log(callback);
         let input = sha1(password+callback.salt);
         if(input === callback.password){
 
@@ -299,12 +270,11 @@ export class AuthService {
           return 1;
 
         }
-        
-       
       }else if(callback && callback.user && this._query.getDatabase() == dbMysql){
         await this.storage.setLocal(this.user,callback.user);
         return 1;
       }
+      //console.log("CALLBACK",callback);
       let alert = this.alertCtrl.create({
       message:this.textAlertWrongUserPassword,
         buttons:[{

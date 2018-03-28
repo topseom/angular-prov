@@ -54,9 +54,11 @@ export class Options{
   table_path:string;
   where:Array<{key:string,value:any}>;
   orderBy:string;
-  loader={};
-  constructor({table="",ref="",loading=false,database="",data={},loader={},lastkey="",method="",api="",api_type="",api_version="",realtime=false,limit=0,page=0,where=[{key:"",value:""}],orderBy="",type="",table_path=""}={}){
+  other_data={};
+  other_table:string;
+  constructor({table="",ref="",loading=false,database="",other_data={},other_table="",data={},lastkey="",method="",api="",api_type="",api_version="",realtime=false,limit=0,page=0,where=[{key:"",value:""}],orderBy="",type="",table_path=""}={}){
     this.table = table,this.ref = ref,this.loading=loading,this.realtime=realtime,this.page=page,this.where=where[0].key != ""?where:[],this.limit=limit,this.orderBy=orderBy,this.lastkey=lastkey,this.type=type,this.table_path = table_path,this.method=method,this.api=api,this.data=data,this.api_type=api_type,this.api_version=api_version;
+    this.database = database;this.other_data = other_data;this.other_table = other_table;
   }
 }
 
@@ -84,7 +86,7 @@ export class QueryService {
   }
 
   async db(args : Query){
-    let database = args['database']?args['database']:this.getDatabase();
+    let database = args.options.database?args.options.database:this.getDatabase();
     args.options.ref = await this._siteStore.getSite();
     args.options.table = args.options.table_path ? args.options.table+'/'+args.options.table_path : args.options.table ;
     console.log("ARGS",args);
@@ -236,9 +238,16 @@ export class QueryService {
         return Promise.reject({message:e,status:400});
       }
     }else if(options.method == "post" || options.method == "push"){
-      options.data['ref'] = options.ref;
-      options.data['database'] = this.getDatabase();
-      let body = JSON.stringify(options.data);
+      let data = {};
+      if(options.other_table){
+        data['other_data'] = options.other_data;
+        data['other_table'] = options.other_table;
+      }
+      data['ref'] = options.ref;
+      data['database'] = this.getDatabase();
+      data['data'] = options.data;
+      console.log("DATA JSON POST",data);
+      let body = JSON.stringify(data);
       try{
         let data = await this.http.post(this.getBaseUrl()+jsonController+options.api_version+options.api_type+options.api+'/'+options.ref,body).toPromise();
         await loader.dismiss();

@@ -8,6 +8,7 @@ export const api = {
     product_single:"json_product_single",
     product_single_id:"json_product_single_id",
     product_filter:"json_product_filter",
+    product_store:"json_store",
     product_type:"json_product_type",
     blog_category:"json_blog_categories",
     blog_list:"json_blog_list",
@@ -36,6 +37,7 @@ export const api = {
     site_single:"json_site",
     user_single_insert:"json_users_single",
     order_single_insert:"json_order_single",
+    order_address_insert:"json_order_address",
     order_address_delete:"json_order_address",
     order_address_update:"json_order_address"
 }
@@ -68,6 +70,7 @@ export const table = {
     app_setting:"app_setting",
     form_config:"form/config",
     form_list:"form",
+    form_users:"form/users",
     images:"images",
     site_list:"SITE/site_list/"
 }
