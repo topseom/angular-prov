@@ -68,6 +68,7 @@ export class QueryService {
   lists = "/lists";
   api_version = "v1/";
   api_type = "json/";
+  key:any;
 
   constructor(@Inject('config') private config:any,private network: Network,private http: HttpClient,public _siteStore:SiteStorage,public af: AngularFireDatabase,public afs:AngularFirestore, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
     setting[setting.app].database = config.database?config.database:setting[setting.app].database;
@@ -142,8 +143,13 @@ export class QueryService {
       }
     }
     if(options.limit){
-      query = (query.limitToFirst(options.limit) as any);
+      query = (query.limitToFirst(options.page?options.limit+1:options.limit) as any);
     }
+    if(options.page && options.page > 1){
+      query = (query.orderByKey() as any);
+      query = (query.startAt(this.key) as any);
+    }
+
     let snap = await query.once('value');
     await loader.dismiss();
     if(snap.val() != null){
@@ -155,6 +161,10 @@ export class QueryService {
           let array = item.val();
           data.push(array);
         });
+        if(options.page && data.length){
+          this.key = data[data.length - 1].id;
+          data.pop();
+        }
         return data;
       }
     }
@@ -186,6 +196,7 @@ export class QueryService {
         let index = tb[tb.length - 1];
         tb.pop();
         options.table = tb.join("/");
+        //console.log(options.ref+"/"+options.table+this.lists,index);
         query = this.afs.firestore.collection(options.ref+"/"+options.table+this.lists).doc(index);
       }
       query = this.afs.firestore.collection(options.ref+"/"+options.table+this.lists);
@@ -198,6 +209,10 @@ export class QueryService {
       if(options.limit){
         query = query.limit(options.limit);
       }
+      if(options.page && options.page > 1){
+        query = query.startAfter(this.key);
+      }
+
       query = await query.get();
       if(query){
         if(options.type == "object"){
@@ -209,6 +224,9 @@ export class QueryService {
           let array = item.data();
           data.push(array);
         });
+        if(options.page && data.length){
+          this.key =  data[data.length - 1].id;
+        }
         await loader.dismiss();
         return data;
       }

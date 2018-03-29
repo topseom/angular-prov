@@ -405,6 +405,7 @@ export class SiteService{
               await ImgCache.cacheFile(theme.setting_logo?theme.setting_logo:false,async data=>{
                 return 1;
               },async err=>{
+                console.log("Error1",err);
                 return 1;
               });
             }
@@ -416,6 +417,7 @@ export class SiteService{
           await this.setTheme({theme:false});
           return 1;
       }catch(e){
+          console.log("Error2",e);
           await loading.dismiss();
           return 1;
       }

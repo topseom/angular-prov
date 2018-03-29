@@ -317,7 +317,7 @@ export class DataService{
 		let callback = await this.data_generate(option);
 		return callback;
   }
-	async page_single({load=true,offlineMode=true}):Promise<any>{
+	async page_single({load=true,offlineMode=true}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.page_single,
@@ -344,7 +344,7 @@ export class DataService{
 		return callback['body'];
 	}
 
-	async product_categories_list({product=[],cate_id=[]}){
+	async product_categories_list({product=[],cate_id=[]}={}){
 		if(cate_id.length){
 		  let filter = []
 		  cate_id.forEach(cate=>{
@@ -720,8 +720,29 @@ export class DataService{
 		let callback = await this.data_generate(option);
 		return callback;
 	}
+   async users_group({load=true,offlineMode=true}={}):Promise<any>{
+		let option:Config;
+		option = {
+			table:table.users_group,
+			offlineMode,
+			options:new Options({ loading:load,where:[{key:"type_group",value:"user"}] })
+		}
+		let callback = await this.data_generate(option);
+		return callback;
+   }
 
-	async user_login({email,password,load=true,offlineMode=false}):Promise<any>{
+   async stream_signup({load=true,offlineMode=true}={}):Promise<any>{
+	    let option:Config;
+	    option = {
+		   table:table.stream_signup,
+		   offlineMode,
+		   options:new Options({ loading:load })
+	    }
+	   let callback = await this.data_generate(option);
+		return callback;
+   }
+
+   async user_login({email,password,load=true,offlineMode=false}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.users_single,
@@ -731,9 +752,9 @@ export class DataService{
 		let callback = await this.data_generate(option);
 		callback = callback[0]?callback[0]:callback;
 		return callback;
-	}
+   }
 	
-	async site_ref({ref,load=true,offlineMode=true}):Promise<any>{
+   async site_ref({ref,load=true,offlineMode=true}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.site_list,
@@ -767,12 +788,23 @@ export class DataService{
 		return callback;
 	}
 
-  async users_single({load=true,offlineMode=true}={}):Promise<any>{
+    async users_single({load=true,offlineMode=true}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.users_single,
 			offlineMode,
 			options:new Options({ loading:load,method:"get",api:api.users_single })
+		}
+		let callback = await this.data_generate(option);
+		return callback;
+	}
+
+	async language({load=true,offlineMode=false}={}):Promise<any>{
+		let option:Config;
+		option = {
+			table:table.language,
+			offlineMode,
+			options:new Options({ loading:load,method:"get",api:api.language })
 		}
 		let callback = await this.data_generate(option);
 		return callback;

@@ -143,13 +143,13 @@ export class AuthService {
     }
   }
 
-  async insertUserEmail({data,database="",load=true}){
+  async insertUserEmail({email,password,profile,database="",load=true}){
     if(database == dbFirebase || database == dbFirestore){
-      data['salt'] = Math.random().toString(36).substring(7);
-      data['password'] = sha1(data['password']+data['salt']);
-      return await this._insert.users_single({email:data['email'],password:data['password'],profile:data,load,database});
+      profile['salt'] = Math.random().toString(36).substring(7);
+      password = sha1(password+profile['salt']);
+      return await this._insert.users_single({email,password,profile,load,database});
     }
-    return await this._insert.users_single({email:data['email'],password:data['password'],load,profile:data});
+    return await this._insert.users_single({email,password,load,profile});
   }
 
   async setUser(data){
