@@ -167,7 +167,7 @@ export class DataService{
 		option = {
 			table:table.navigation,
 			offlineMode,
-			options:new Options({ loading:load,where:[{key:'abbrev',value:'mobile'}],method:"get",api:api.navigation })
+			options:new Options({ lang:true,loading:load,where:[{key:'abbrev',value:'mobile'}],method:"get",api:api.navigation })
 		}
 		let callback = await this.data_generate(option);
 		callback = callback[0].navigations ? callback[0].navigations : callback;
@@ -184,7 +184,7 @@ export class DataService{
 		option = {
 			table:table.blog_category,
 			offlineMode,
-			options:new Options({ loading:load,method:"get",api:api.blog_category })
+			options:new Options({ lang:true,loading:load,method:"get",api:api.blog_category })
 		}
 		let callback = await this.data_generate(option);
 		return callback;
@@ -195,7 +195,7 @@ export class DataService{
 		option = {
 			table:table.blog_list,
 			offlineMode,
-			options:new Options({ loading:load, where:[{key:"category",value:id }] ,method:"get",api:api.blog_list_category+"/"+id}),
+			options:new Options({ lang:true,loading:load, where:[{key:"category",value:id }] ,method:"get",api:api.blog_list_category+"/"+id}),
 			filter:{
 				key:"category",
 				value:id
@@ -216,7 +216,7 @@ export class DataService{
 		option = {
 			table:table.blog_list,
 			offlineMode,
-			options:new Options({ loading:load,where:[{key:type,value:'1'}],method:"get",api:api.blog_list_type+"/"+type}),
+			options:new Options({ lang:true,loading:load,where:[{key:type,value:'1'}],method:"get",api:api.blog_list_type+"/"+type}),
 			filter:{
 				key:type,
 				value:"1"
@@ -231,7 +231,7 @@ export class DataService{
 		option = {
 			table:table.blog_list,
 			offlineMode,
-			options:new Options({ loading:load,type:"object",table_path:id,method:"get",api:api.blog_list_id+"/"+id}),
+			options:new Options({ lang:true,loading:load,type:"object",table_path:id,method:"get",api:api.blog_list_id+"/"+id}),
 			filter:{
 				key:"id",
 				value:id,
@@ -322,7 +322,7 @@ export class DataService{
 		option = {
 			table:table.page_single,
 			offlineMode,
-			options:new Options({ loading:load,method:"get",api:api.page_single})
+			options:new Options({ lang:true,loading:load,method:"get",api:api.page_single})
 		}
 		let callback = await this.data_generate(option);
 		return callback['body'];
@@ -332,7 +332,7 @@ export class DataService{
 		option = {
 			table:table.page_single,
 			offlineMode,
-			options:new Options({ loading:load,where:[{key:"slug",value:slug}],method:"get",api:api.page_list_id+"/"+slug}),
+			options:new Options({ lang:true,loading:load,where:[{key:"slug",value:slug}],method:"get",api:api.page_list_id+"/"+slug}),
 			filter:{
 				key:"slug",
 				value:slug,
@@ -627,7 +627,7 @@ export class DataService{
 		option = {
 			table:table.listing_single,
 			offlineMode,
-			options:new Options({ loading:load,where:[{key:"featured",value:"1"}],method:"get",api:api.listing_list_featured })
+			options:new Options({ lang:true,loading:load,where:[{key:"featured",value:"1"}],method:"get",api:api.listing_list_featured })
 		}
 		let callback = await this.data_generate(option);
 		if(callback){
@@ -652,7 +652,7 @@ export class DataService{
 		option = {
 			table:table.listing_single,
 			offlineMode,
-			options:new Options({ loading:load,where:[{key:"category",value:id}],method:"get",api:api.listing_list_category+"/"+id }),
+			options:new Options({ lang:true,loading:load,where:[{key:"category",value:id}],method:"get",api:api.listing_list_category+"/"+id }),
 			filter:{
 				key:"category",
 				value:id
@@ -667,7 +667,7 @@ export class DataService{
 		option = {
 			table:table.listing_single,
 			offlineMode,
-			options:new Options({ loading:load,method:"get",api:api.listing_single })
+			options:new Options({ lang:true,loading:load,method:"get",api:api.listing_single })
 		}
 		let callback = await this.data_generate(option);
 		return callback;
@@ -678,7 +678,7 @@ export class DataService{
 		option = {
 			table:table.listing_category,
 			offlineMode,
-			options:new Options({ loading:load,method:"get",api:api.listing_category })
+			options:new Options({ lang:true,loading:load,method:"get",api:api.listing_category })
 		}
 		let callback = await this.data_generate(option);
 		return callback;

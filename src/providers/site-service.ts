@@ -203,7 +203,7 @@ export class SiteService{
     let callback = await returnRoot();
     return callback;
   }
-
+  
   selectLanguage(lang:any){
     this.translate.use(lang);
   }

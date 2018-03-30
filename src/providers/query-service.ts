@@ -4,6 +4,7 @@ import { AngularFireDatabase,AngularFireList } from 'angularfire2/database';
 import { AngularFirestore,AngularFirestoreCollection } from 'angularfire2/firestore';
 import { AlertController,LoadingController} from 'ionic-angular';
 import { HttpClient } from '@angular/common/http';
+import { TranslateService } from '@ngx-translate/core';
 import { SiteStorage } from './site-storage';
 import 'rxjs/add/operator/take'
 import * as tsfirebase from 'firebase/app';
@@ -40,6 +41,8 @@ export class Options{
   table:string;
   ref:string;
   realtime:boolean;
+  lang:boolean;
+  lang_code:string;
   limit:number;
   page:number;
   loading:boolean;
@@ -56,9 +59,9 @@ export class Options{
   orderBy:string;
   other_data={};
   other_table:string;
-  constructor({table="",ref="",loading=false,database="",other_data={},other_table="",data={},lastkey="",method="",api="",api_type="",api_version="",realtime=false,limit=0,page=0,where=[{key:"",value:""}],orderBy="",type="",table_path=""}={}){
+  constructor({table="",ref="",loading=false,lang_code="",lang=false,database="",other_data={},other_table="",data={},lastkey="",method="",api="",api_type="",api_version="",realtime=false,limit=0,page=0,where=[{key:"",value:""}],orderBy="",type="",table_path=""}={}){
     this.table = table,this.ref = ref,this.loading=loading,this.realtime=realtime,this.page=page,this.where=where[0].key != ""?where:[],this.limit=limit,this.orderBy=orderBy,this.lastkey=lastkey,this.type=type,this.table_path = table_path,this.method=method,this.api=api,this.data=data,this.api_type=api_type,this.api_version=api_version;
-    this.database = database;this.other_data = other_data;this.other_table = other_table;
+    this.lang = lang,this.lang_code=lang_code,this.database = database;this.other_data = other_data;this.other_table = other_table;
   }
 }
 
@@ -70,7 +73,7 @@ export class QueryService {
   api_type = "json/";
   key:any;
 
-  constructor(@Inject('config') private config:any,private network: Network,private http: HttpClient,public _siteStore:SiteStorage,public af: AngularFireDatabase,public afs:AngularFirestore, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
+  constructor(@Inject('config') private config:any,public translate: TranslateService,private network: Network,private http: HttpClient,public _siteStore:SiteStorage,public af: AngularFireDatabase,public afs:AngularFirestore, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
     setting[setting.app].database = config.database?config.database:setting[setting.app].database;
   }
 
@@ -89,7 +92,10 @@ export class QueryService {
   async db(args : Query){
     let database = args.options.database?args.options.database:this.getDatabase();
     args.options.ref = await this._siteStore.getSite();
-    args.options.table = args.options.table_path ? args.options.table+'/'+args.options.table_path : args.options.table ;
+    args.options.table = args.options.table_path.charAt(0) ? args.options.table+'/'+args.options.table_path : args.options.table ;
+    if(args.options.lang){
+      args.options.lang_code = this.translate.currentLang || "en";
+    }
     console.log("ARGS",args);
     if(!args.options.table){
       return Promise.reject({message:"not found table",status:404});
@@ -116,25 +122,28 @@ export class QueryService {
 
   //Firebase
   async firebase(options:Options){
-    console.log("TABLE",options.table);
+    options.table = options.ref+"/"+options.table;
+    if(options.lang){
+      options.table = options.table+"/"+options.lang_code;
+    }
     if(options.realtime){
       if(options.where.length && options.limit){
         let where = new Where(options.where[0]);
-        return this.af.list('/'+options.ref+'/'+options.table,res=>res.orderByChild(where.key).equalTo(where.value).limitToFirst(options.limit));
+        return this.af.list('/'+options.table,res=>res.orderByChild(where.key).equalTo(where.value).limitToFirst(options.limit));
       }else if(!options.where.length && options.limit){
-        return this.af.list('/'+options.ref+'/'+options.table,res=>res.limitToFirst(options.limit));
+        return this.af.list('/'+options.table,res=>res.limitToFirst(options.limit));
       }else if(options.where.length && !options.limit){
         let where = new Where(options.where[0]);
-        return this.af.list('/'+options.ref+'/'+options.table,res=>res.orderByChild(where.key).equalTo(where.value));
+        return this.af.list('/'+options.table,res=>res.orderByChild(where.key).equalTo(where.value));
       }
-      return this.af.list('/'+options.ref+'/'+options.table);
+      return this.af.list('/'+options.table);
     }
 
     let loader = this.loadingCrtl.create();
     if(options.loading){
       loader.present();
     }
-    let query = firebase.database().ref().child(options.ref).child(options.table);
+    let query = firebase.database().ref().child(options.table);
     if(options.where.length){
       let where = new Where(options.where[0]);
       query = (query.orderByChild(where.key) as any);
@@ -172,17 +181,21 @@ export class QueryService {
   }
   //Firestore
   async firestore(options:Options){
+    options.table = options.ref+"/"+options.table+this.lists;
+    if(options.lang){
+      options.table = options.table+"_"+options.lang_code;
+    }
     if(options.realtime){
       if(options.where.length && options.limit){
         let where = new Where(options.where[0]);
-        return this.afs.collection('/'+options.ref+'/'+options.table,res=>res.where(where.key,"==",where.value).limit(options.limit)).valueChanges();
+        return this.afs.collection('/'+options.table,res=>res.where(where.key,"==",where.value).limit(options.limit)).valueChanges();
       }else if(!options.where.length && options.limit){
-        return this.afs.collection('/'+options.ref+'/'+options.table,res=>res.limit(options.limit)).valueChanges();
+        return this.afs.collection('/'+options.table,res=>res.limit(options.limit)).valueChanges();
       }else if(options.where.length && !options.limit){
         let where = new Where(options.where[0]);
-        return this.afs.collection('/'+options.ref+'/'+options.table,res=>res.where(where.key,"==",where.value)).valueChanges();
+        return this.afs.collection('/'+options.table,res=>res.where(where.key,"==",where.value)).valueChanges();
       }
-      return this.af.list('/'+options.ref+'/'+options.table).valueChanges();
+      return this.af.list('/'+options.table).valueChanges();
     }
 
     let loader = this.loadingCrtl.create();
@@ -193,13 +206,14 @@ export class QueryService {
     try{
       if(options.type == "object"){
         let tb = options.table.split("/");
-        let index = tb[tb.length - 1];
-        tb.pop();
+        let index = tb[tb.length - 2];
+        tb.splice(tb.length - 2,1);
         options.table = tb.join("/");
-        //console.log(options.ref+"/"+options.table+this.lists,index);
-        query = this.afs.firestore.collection(options.ref+"/"+options.table+this.lists).doc(index);
+        query = this.afs.firestore.collection(options.table).doc(index);
+      }else{
+        query = this.afs.firestore.collection(options.table);
       }
-      query = this.afs.firestore.collection(options.ref+"/"+options.table+this.lists);
+
       if(options.where.length){
         options.where.forEach(where=>{
           where = new Where(where);
@@ -214,6 +228,7 @@ export class QueryService {
       }
 
       query = await query.get();
+      
       if(query){
         if(options.type == "object"){
           await loader.dismiss();
@@ -261,10 +276,10 @@ export class QueryService {
         data['other_data'] = options.other_data;
         data['other_table'] = options.other_table;
       }
+      data['lang_code'] = options.lang_code;
       data['ref'] = options.ref;
       data['database'] = this.getDatabase();
       data['data'] = options.data;
-      console.log("DATA JSON POST",data);
       let body = JSON.stringify(data);
       try{
         let data = await this.http.post(this.getBaseUrl()+jsonController+options.api_version+options.api_type+options.api+'/'+options.ref,body).toPromise();

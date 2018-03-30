@@ -149,9 +149,9 @@ export class StorageService {
           return data;
         case table.blog_category:
           // no image
-          return await this._query.query(table.product_category,new Options({method:"get",api:api.blog_category}));
+          return await this._query.query(table.product_category,new Options({ lang:true,method:"get",api:api.blog_category}));
         case table.blog_list:
-          data = await this._query.query(table.blog_list,new Options({method:"get",api:api.blog_list}));
+          data = await this._query.query(table.blog_list,new Options({ lang:true,method:"get",api:api.blog_list}));
           if(data && data.length > 0){
             let images = data.map((result)=>result.image_t);
             await _images.addImage(images);
@@ -178,7 +178,7 @@ export class StorageService {
           return data;
         case table.navigation:
           // have image (image.icon_image.path)
-          data = await this._query.query(table.navigation,new Options({method:"get",api:api.navigation}));
+          data = await this._query.query(table.navigation,new Options({ lang:true,method:"get",api:api.navigation}));
           if(data && data.length > 0){
             let images = await this.forImageChildren(data,"children",[]);
             images = images.map((img)=>img.icon_image && img.icon_image.path);
@@ -189,7 +189,7 @@ export class StorageService {
 
         case table.page_single:
           // have image in (html=>body)
-          data = await this._query.query(table.page_single,new Options({method:"get",api:api.page_single}));
+          data = await this._query.query(table.page_single,new Options({ lang:true,method:"get",api:api.page_single}));
           let rex = /<img[^>]+src="?([^"\s]+)"/g;
           let images_page = [];
           if(data && data.length > 0){
