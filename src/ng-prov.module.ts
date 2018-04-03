@@ -48,6 +48,7 @@ import { UpdateService } from './providers/update-service';
 import { DeleteService } from './providers/delete-service';
 import { InsertService } from './providers/insert-service';
 import { DataService } from './providers/data-service';
+import { StreamService } from './providers/stream-service';
 
 import { Facebook } from '@ionic-native/facebook';
 import { GooglePlus } from '@ionic-native/google-plus';
@@ -150,6 +151,7 @@ export class NgProvModule{
               DeleteService,
               InsertService,
               DataService,
+              StreamService,
               Network,
               SplashScreen,
               StatusBar,

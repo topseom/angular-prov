@@ -37,6 +37,7 @@ export const api = {
     language:"json_language",
     site_single:"json_site",
     user_single_insert:"json_users_single",
+    user_single_stream:"json_users_single",
     order_single_insert:"json_order_single",
     order_address_insert:"json_order_address",
     order_address_delete:"json_order_address",
