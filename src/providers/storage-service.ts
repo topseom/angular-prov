@@ -211,7 +211,7 @@ export class StorageService {
           return data;
         case table.portfolio_category:
           // have image (image.image)
-          data = await this._query.query(table.portfolio_category,new Options({method:"get",api:api.portfolio_category}));
+          data = await this._query.query(table.portfolio_category,new Options({lang:true,method:"get",api:api.portfolio_category}));
           if(data && data.length > 0){
             let images = data.map((result)=>result.image);
             await _images.addImage(images);
@@ -219,7 +219,7 @@ export class StorageService {
           return data;
         case table.portfolio_single:
           // have image (image.images)
-          data = await this._query.query(table.portfolio_single,new Options({method:"get",api:api.portfolio_single}))
+          data = await this._query.query(table.portfolio_single,new Options({lang:true,method:"get",api:api.portfolio_single}))
           if(data && data.length > 0){
             let images = [];
             images = data.map((result)=>result.images).reduce((array,result)=>array.concat(result));

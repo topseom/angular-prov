@@ -297,7 +297,7 @@ export class DataService{
 		option = {
 			table:table.portfolio_category,
 			offlineMode,
-			options:new Options({ loading:load,method:"get",api:api.portfolio_category })
+			options:new Options({ lang:true,loading:load,method:"get",api:api.portfolio_category })
 		}
 		let callback = await this.data_generate(option);
 		return callback;
@@ -308,7 +308,7 @@ export class DataService{
 		option = {
 			table:table.portfolio_single,
 			offlineMode,
-			options:new Options({ loading:load,where:[{key:"category",value:id}],method:"get",api:api.portfolio_list_category+"/"+id }),
+			options:new Options({ lang:true,loading:load,where:[{key:"category",value:id}],method:"get",api:api.portfolio_list_category+"/"+id }),
 			filter:{
 				key:"category",
 				value:id
