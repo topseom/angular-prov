@@ -55,6 +55,25 @@ export class DataService{
 	   return module_slides;
 	}
 
+	async build_tree(nodes){
+		nodes = nodes.sort((a,b)=> a['parent']-b['parent'] );
+		let map = {}, node, roots = [];
+		for (var i = 0; i < nodes.length; i += 1) {
+				   node = nodes[i];
+				   node['children'] = [];
+				   map[node.id] = i;
+				   node.parent = node.parent.toString();
+				   if (node.parent !== "0") {
+					 if(roots[map[node.parent]]){
+					   roots[map[node.parent]]['children'].push(node);
+					 }
+				   }else{
+					 roots.push(node);
+				   }
+		}
+		return roots;
+	}
+
     async page_module(module):Promise<any>{
 		
 			if(module.module_name != "0" && module.module_name != ""){
@@ -673,7 +692,7 @@ export class DataService{
 		return callback;
 	}
 
-  async listing_category({load=true,offlineMode=true}={}):Promise<any>{
+  async listing_category({load=true,offlineMode=true,buildTree=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.listing_category,
@@ -681,6 +700,9 @@ export class DataService{
 			options:new Options({ lang:true,loading:load,method:"get",api:api.listing_category })
 		}
 		let callback = await this.data_generate(option);
+		if(buildTree){
+		   callback = await this.build_tree(callback);
+		}
 		return callback;
 	}
 	  

@@ -27,7 +27,7 @@ export class DeleteService{
 	}
 
 	async db(args:Query){
-		let database = args['database']?args['database']:this._query.getDatabase();
+		let database = args.options.database?args.options.database:this._query.getDatabase();
 		args.options.ref = await this._siteStore.getSite();
 		args.options.api_version = args.options.api_version?args.options.api_version:this.api_version;
 		args.options.api_type = args.options.api_type?args.options.api_type:this.api_type;
@@ -38,7 +38,8 @@ export class DeleteService{
 		if(!args.options.data){
 			return Promise.reject({message:"not found index to delete",status:404})
 		}
-	  	if(database == dbFirebase){
+		console.log("")  
+		if(database == dbFirebase){
 	      	return await this.firebase(args.options);
 	  	}else if(database == dbFirestore){
 	      	return await this.firestore(args.options);
@@ -62,12 +63,16 @@ export class DeleteService{
 		if(options.loading){
       		loader.present();
 		}
-		await this.afs.doc(options.ref+"/"+options.table+'/'+this.lists+'/'+options.data['id']).delete();
+		await this.afs.doc(options.ref+"/"+options.table+this.lists+'/'+options.data['id']).delete();
 		await loader.dismiss();
 		return 1;
 	}
 
 	async order_address({id,load=true}){
 		return await this.query(table.order_address,new Options({ method:"post",api:api.order_address_delete,data:{id},database:dbMysql,loading:load }));
+	}
+
+	async listing_single({id,load=true}){
+		return await this.query(table.listing_single,new Options({ method:"post",api:api.listing_single,data:{id},database:dbMysql,loading:load }));
 	}
 }

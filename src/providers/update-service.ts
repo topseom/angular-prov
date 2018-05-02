@@ -7,7 +7,7 @@ import { LoadingController } from 'ionic-angular';
 
 //dbFirebase
 //dbMysql
-import { Database,dbFirebase,dbFirestore,dbMysql,table,api } from './interface';
+import { Database,dbFirebase,dbFirestore,dbMysql,table,api,post } from './interface';
 
 @Injectable()
 export class UpdateService{
@@ -24,7 +24,7 @@ export class UpdateService{
 	}
 
 	async db(args:Query){
-		let database = args['database']?args['database']:this._query.getDatabase();
+		let database = args.options.database?args.options.database:this._query.getDatabase();
 		args.options.ref = await this._siteStore.getSite();
 		args.options.api_version = args.options.api_version?args.options.api_version:this.api_version;
 		args.options.api_type = args.options.api_type?args.options.api_type:this.api_type;
@@ -59,13 +59,17 @@ export class UpdateService{
 		if(options.loading){
       		loader.present();
 		}
-		await this.afs.doc(options.ref+"/"+options.table+'/'+this.lists+'/'+options.data['id']).update(options.data);
+		await this.afs.doc(options.ref+"/"+options.table+this.lists+'/'+options.data['id']).update(options.data);
 		await loader.dismiss();
 		return 1;
 	}
 	
 	async order_address({id,update,load=true}){
-		return await this.query(table.order_address,new Options({ method:"post",api:api.order_address_update,data:{id,...update},database:dbMysql,loading:load }));
+		return await this.query(table.order_address,new Options({ method:post,api:api.order_address_update,data:{id,...update},database:dbMysql,loading:load }));
+	}
+
+	async listing_single({id,update,load=true}){
+		return await this.query(table.listing_single,new Options({ method:post,api:api.listing_single,data:{id,...update},database:dbMysql,loading:load }));
 	}
 
 }

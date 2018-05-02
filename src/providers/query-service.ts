@@ -59,9 +59,11 @@ export class Options{
   orderBy:string;
   other_data={};
   other_table:string;
-  constructor({table="",ref="",loading=false,lang_code="",lang=false,database="",other_data={},other_table="",data={},lastkey="",method="",api="",api_type="",api_version="",realtime=false,limit=0,page=0,where=[{key:"",value:""}],orderBy="",type="",table_path=""}={}){
+  upload:boolean;
+  constructor({table="",ref="",loading=false,upload=false,lang_code="",lang=false,database="",other_data={},other_table="",data={},lastkey="",method="",api="",api_type="",api_version="",realtime=false,limit=0,page=0,where=[{key:"",value:""}],orderBy="",type="",table_path=""}={}){
     this.table = table,this.ref = ref,this.loading=loading,this.realtime=realtime,this.page=page,this.where=where[0].key != ""?where:[],this.limit=limit,this.orderBy=orderBy,this.lastkey=lastkey,this.type=type,this.table_path = table_path,this.method=method,this.api=api,this.data=data,this.api_type=api_type,this.api_version=api_version;
     this.lang = lang,this.lang_code=lang_code,this.database = database;this.other_data = other_data;this.other_table = other_table;
+    this.upload = upload;
   }
 }
 
@@ -276,11 +278,23 @@ export class QueryService {
         data['other_data'] = options.other_data;
         data['other_table'] = options.other_table;
       }
-      data['lang_code'] = options.lang_code;
-      data['ref'] = options.ref;
-      data['database'] = this.getDatabase();
-      data['data'] = options.data;
-      let body = JSON.stringify(data);
+      let body;
+      if(options.upload){
+        body = new FormData();
+        body.append("lang_code",options.lang_code);
+        body.append('ref',options.ref);
+        body.append('database',this.getDatabase());
+        console.log("IMAGE",options.data['image']);
+        body.append("image", options.data['image'], options.data['image'].name);
+        body.append("data",JSON.stringify(options.data));
+      }else{
+        data['lang_code'] = options.lang_code;
+        data['ref'] = options.ref;
+        data['database'] = this.getDatabase();
+        data['data'] = options.data;
+        body = JSON.stringify(data);
+      }
+      console.log("DATA BEFORE SEND",body);
       try{
         let data = await this.http.post(this.getBaseUrl()+jsonController+options.api_version+options.api_type+options.api+'/'+options.ref,body).toPromise();
         await loader.dismiss();

@@ -81,7 +81,7 @@ export class InsertService{
 			await loader.dismiss();
 			return 1;
 		}else if(options.method == "push"){
-			await this.afs.collection(options.ref+"/"+options.table+'/'+this.lists).add(options.data);
+			await this.afs.collection(options.ref+"/"+options.table+this.lists).add(options.data);
 			await loader.dismiss();
 			return 1;
 		}
@@ -97,6 +97,10 @@ export class InsertService{
 
 	async users_single({email,password,profile={},load=true,database=dbMysql }){
 		return await this.query(table.users_single,new Options({ method:"push",api:api.user_single_insert,data:{email,password,...profile},database,loading:load }));
+	}
+
+	async listing_single({data,image,load=true,database=dbMysql }){
+		return await this.query(table.listing_single,new Options({ method:"push",upload:true,api:api.listing_single,data:{...data,image},database,loading:load }));
 	}
 
 	async order_address({data,load=true,database=dbMysql}){

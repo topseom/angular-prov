@@ -23,6 +23,7 @@ export const api = {
     listing_list_category:"json_listing_list_category_id",
     listing_list_featured:"json_listing_featured",
     listing_single:"json_listing_single",
+    listing_condition:"json_listing_condition",
     navigation:"json_navigation",
     page_single:"json_page_single",
     page_list_id:"json_page_single_id",
@@ -77,6 +78,11 @@ export const table = {
     images:"images",
     site_list:"SITE/site_list/"
 }
+
+export const post = "post";
+
+export const create = "create";
+export const edit = "edit";
 
 export const dbFirebase = "firebase";
 export const dbFirestore = "firestore";
