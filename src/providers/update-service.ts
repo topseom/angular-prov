@@ -68,8 +68,8 @@ export class UpdateService{
 		return await this.query(table.order_address,new Options({ method:post,api:api.order_address_update,data:{id,...update},database:dbMysql,loading:load }));
 	}
 
-	async listing_single({id,update,load=true}){
-		return await this.query(table.listing_single,new Options({ method:post,api:api.listing_single,data:{id,...update},database:dbMysql,loading:load }));
+	async listing_single({id,update,image,load=true}){
+		return await this.query(table.listing_single,new Options({ method:post,upload:true,api:api.listing_single,data:{id,...update,image},database:dbMysql,loading:load }));
 	}
 
 }

@@ -285,7 +285,9 @@ export class QueryService {
         body.append('ref',options.ref);
         body.append('database',this.getDatabase());
         console.log("IMAGE",options.data['image']);
-        body.append("image", options.data['image'], options.data['image'].name);
+        if(options.data['image'].name){
+          body.append("image", options.data['image'], options.data['image'].name);
+        }
         body.append("data",JSON.stringify(options.data));
       }else{
         data['lang_code'] = options.lang_code;
