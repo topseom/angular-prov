@@ -485,7 +485,7 @@ export class DataService{
 		option = {
 			table:table.product_list,
 			offlineMode,
-			options:new Options({ loading:load,method:"get", api:api.product_type+"/"+type }),
+			options:new Options({ loading:load,method:"get",limit, api:api.product_type+"/"+type,where:[{key:type,value:"1"}] }),
 			filter:{
 				key:type,
 				value:"1"
@@ -511,7 +511,7 @@ export class DataService{
 		return callback;
 	}
 
-  async product_category({load=true,offlineMode=true}={}):Promise<any>{
+  async product_category({load=true,offlineMode=true,buildTree=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.product_category,
@@ -519,6 +519,9 @@ export class DataService{
 			options:new Options({ loading:load,method:"get",api:api.product_category })
 		}
 		let callback = await this.data_generate(option);
+		if(buildTree){
+			callback = await this.build_tree(callback);
+		 }
 		return callback;
 	}
 
@@ -727,6 +730,17 @@ export class DataService{
 			table:table.order_gateway,
 			offlineMode,
 			options:new Options({ loading:load,method:"get",api:api.order_gateway })
+		}
+		let callback = await this.data_generate(option);
+		return callback;
+	}
+
+	async order_shipping({load=true,offlineMode=true}={}):Promise<any>{
+		let option:Config;
+		option = {
+			table:table.order_shipping,
+			offlineMode,
+			options:new Options({ loading:load,method:"get",api:table.order_shipping })
 		}
 		let callback = await this.data_generate(option);
 		return callback;

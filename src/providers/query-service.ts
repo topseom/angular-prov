@@ -30,8 +30,12 @@ export class Query{
 export class Where{
   key:string;
   value:any;
-  constructor(object){
-    this.key = object.key;
+  constructor(object,db=""){
+    if(db == dbFirestore){
+      this.key = object.key.replace("/",".");
+    }else{
+      this.key = object.key;
+    }
     this.value = object.value;
   }
 }
@@ -189,12 +193,12 @@ export class QueryService {
     }
     if(options.realtime){
       if(options.where.length && options.limit){
-        let where = new Where(options.where[0]);
+        let where = new Where(options.where[0],dbFirestore);
         return this.afs.collection('/'+options.table,res=>res.where(where.key,"==",where.value).limit(options.limit)).valueChanges();
       }else if(!options.where.length && options.limit){
         return this.afs.collection('/'+options.table,res=>res.limit(options.limit)).valueChanges();
       }else if(options.where.length && !options.limit){
-        let where = new Where(options.where[0]);
+        let where = new Where(options.where[0],dbFirestore);
         return this.afs.collection('/'+options.table,res=>res.where(where.key,"==",where.value)).valueChanges();
       }
       return this.af.list('/'+options.table).valueChanges();
@@ -218,7 +222,7 @@ export class QueryService {
 
       if(options.where.length){
         options.where.forEach(where=>{
-          where = new Where(where);
+          where = new Where(where,dbFirestore);
           query = query.where(where.key,"==",where.value);
         });
       }
