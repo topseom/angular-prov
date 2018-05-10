@@ -181,6 +181,21 @@ export class DataService{
 		return callback;
 	}
 
+	async banner_slug({slug,load=true,offlineMode=true}):Promise<any>{
+		let option:Config;
+		option = {
+			table:table.banner_single,
+			offlineMode,
+			options:new Options({ loading:load,where:[{key:'slug',value:slug}],method:"get",api:api.banner_single }),
+			filter:{
+				key:"slug",
+				value:slug
+			}
+		}
+		let callback = await this.data_generate(option);
+		return callback;
+	}
+
   async navigation({load=true,offlineMode=true,slide=false,slide_limit=10}={}):Promise<any>{
 		let option:Config;
 		option = {
@@ -209,12 +224,12 @@ export class DataService{
 		return callback;
 	}
 	  
-    async blog_list({id,load=true,offlineMode=true}):Promise<any>{
+    async blog_list({id,load=true,offlineMode=true,limit=0,page=0}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.blog_list,
 			offlineMode,
-			options:new Options({ lang:true,loading:load, where:[{key:"category",value:id }] ,method:"get",api:api.blog_list_category+"/"+id}),
+			options:new Options({ lang:true,limit,page,loading:load, where:[{key:"category",value:id }] ,method:"get",api:api.blog_list_category+"/"+id}),
 			filter:{
 				key:"category",
 				value:id
@@ -224,7 +239,7 @@ export class DataService{
 		return callback;
 	}
 
-    async blog_type({type,load=true,offlineMode=true}):Promise<any>{
+    async blog_type({type,load=true,offlineMode=true,limit=0,page=0}):Promise<any>{
 		let type_json = type;
 		switch(type){
 			case "featured":
@@ -235,7 +250,7 @@ export class DataService{
 		option = {
 			table:table.blog_list,
 			offlineMode,
-			options:new Options({ lang:true,loading:load,where:[{key:type,value:'1'}],method:"get",api:api.blog_list_type+"/"+type}),
+			options:new Options({ lang:true,limit,page,loading:load,where:[{key:type,value:'1'}],method:"get",api:api.blog_list_type+"/"+type}),
 			filter:{
 				key:type,
 				value:"1"
@@ -322,12 +337,12 @@ export class DataService{
 		return callback;
 	}
 	  
-  async portfolio_list({id,load=true,offlineMode=true}):Promise<any>{
+  async portfolio_list({id,load=true,offlineMode=true,limit=0,page=0}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.portfolio_single,
 			offlineMode,
-			options:new Options({ lang:true,loading:load,where:[{key:"category",value:id}],method:"get",api:api.portfolio_list_category+"/"+id }),
+			options:new Options({ lang:true,limit,page,loading:load,where:[{key:"category",value:id}],method:"get",api:api.portfolio_list_category+"/"+id }),
 			filter:{
 				key:"category",
 				value:id
@@ -433,12 +448,12 @@ export class DataService{
 		return callback;
 	}
 
-  	async product_list({id,load=true,offlineMode=true}):Promise<any>{
+  	async product_list({id,load=true,offlineMode=true,limit=0,page=0}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.product_list,
 			offlineMode,
-			options:new Options({ loading:load,where:[({key:"category/category_"+id,value:true} as any)],method:"get",api:api.product_category_id+"/"+id }),
+			options:new Options({ loading:load,page,limit,where:[({key:"category/category_"+id,value:true} as any)],method:"get",api:api.product_category_id+"/"+id }),
 			filter:{
 				parent_key:"category",
 				key:"category_"+id,
@@ -460,12 +475,12 @@ export class DataService{
 		return callback;
 	}
 
-  	async product_listAll({load=true,offlineMode=true}={}):Promise<any>{
+  	async product_listAll({load=true,offlineMode=true,limit=0,page=0}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.product_list,
 			offlineMode,
-			options:new Options({ loading:load,method:"get", api:api.product_list })
+			options:new Options({ loading:load,limit,page,method:"get", api:api.product_list })
 		}
 		let callback = await this.data_generate(option);
 		return callback;
@@ -644,12 +659,12 @@ export class DataService{
 		}
 	}
 
-  	async listing_featured({load=true,offlineMode=true,groupByCate=false}={}):Promise<any>{
+  	async listing_featured({load=true,offlineMode=true,limit=0,groupByCate=false}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.listing_single,
 			offlineMode,
-			options:new Options({ lang:true,loading:load,where:[{key:"featured",value:"1"}],method:"get",api:api.listing_list_featured })
+			options:new Options({ lang:true,limit,loading:load,where:[{key:"featured",value:"1"}],method:"get",api:api.listing_list_featured })
 		}
 		let callback = await this.data_generate(option);
 		if(callback){
@@ -669,12 +684,12 @@ export class DataService{
 		return callback;
 	}
 
-  async listing_list({id,load=true,offlineMode=true}):Promise<any>{
+  async listing_list({id,load=true,offlineMode=true,limit=0,page=0}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.listing_single,
 			offlineMode,
-			options:new Options({ lang:true,loading:load,where:[{key:"category",value:id}],method:"get",api:api.listing_list_category+"/"+id }),
+			options:new Options({ lang:true,limit,page,loading:load,where:[{key:"category",value:id}],method:"get",api:api.listing_list_category+"/"+id }),
 			filter:{
 				key:"category",
 				value:id
@@ -684,12 +699,12 @@ export class DataService{
 		return callback;
 	}
 
-  async listing_listAll({load=true,offlineMode=true}={}):Promise<any>{
+  async listing_listAll({load=true,offlineMode=true,limit=0,page=0}={}):Promise<any>{
 		let option:Config;
 		option = {
 			table:table.listing_single,
 			offlineMode,
-			options:new Options({ lang:true,loading:load,method:"get",api:api.listing_single })
+			options:new Options({ lang:true,page,limit,loading:load,method:"get",api:api.listing_single })
 		}
 		let callback = await this.data_generate(option);
 		return callback;

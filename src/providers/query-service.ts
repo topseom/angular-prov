@@ -77,7 +77,7 @@ export class QueryService {
   lists = "/lists";
   api_version = "v1/";
   api_type = "json/";
-  key:any;
+  lastKey = [];
 
   constructor(@Inject('config') private config:any,public translate: TranslateService,private network: Network,private http: HttpClient,public _siteStore:SiteStorage,public af: AngularFireDatabase,public afs:AngularFirestore, public alertCtrl:AlertController,public loadingCrtl:LoadingController) {
     setting[setting.app].database = config.database?config.database:setting[setting.app].database;
@@ -135,15 +135,45 @@ export class QueryService {
     if(options.realtime){
       if(options.where.length && options.limit){
         let where = new Where(options.where[0]);
-        return this.af.list('/'+options.table,res=>res.orderByChild(where.key).equalTo(where.value).limitToFirst(options.limit));
+        return this.af.list(options.table,res=>res.orderByChild(where.key).equalTo(where.value).limitToFirst(options.limit)).snapshotChanges().map(items=>{
+          return items.map(item=>{
+            return {
+              ...item.payload.val(),
+              id:item.payload.key
+            }
+          });
+        });
       }else if(!options.where.length && options.limit){
-        return this.af.list('/'+options.table,res=>res.limitToFirst(options.limit));
+        return this.af.list(options.table,res=>res.limitToFirst(options.limit)).snapshotChanges().map(items=>{
+          return items.map(item=>{
+            return {
+              ...item.payload.val(),
+              id:item.payload.key
+            }
+          });
+        });
       }else if(options.where.length && !options.limit){
+        
         let where = new Where(options.where[0]);
-        return this.af.list('/'+options.table,res=>res.orderByChild(where.key).equalTo(where.value));
+        return this.af.list(options.table,res=>res.orderByChild(where.key).equalTo(where.value)).snapshotChanges().map(items=>{
+          return items.map(item=>{
+            return {
+              ...item.payload.val(),
+              id:item.payload.key
+            }
+          });
+        });
       }
-      return this.af.list('/'+options.table);
+      return this.af.list(options.table).snapshotChanges().map(items=>{
+        return items.map(item=>{
+          return {
+            ...item.payload.val(),
+            id:item.payload.key
+          }
+        });
+      });
     }
+    //console.log("5");
 
     let loader = this.loadingCrtl.create();
     if(options.loading){
@@ -162,7 +192,7 @@ export class QueryService {
     }
     if(options.page && options.page > 1){
       query = (query.orderByKey() as any);
-      query = (query.startAt(this.key) as any);
+      query = (query.startAt(this.lastKey[options.table]) as any);
     }
 
     let snap = await query.once('value');
@@ -176,8 +206,9 @@ export class QueryService {
           let array = item.val();
           data.push(array);
         });
+        //options.table
         if(options.page && data.length){
-          this.key = data[data.length - 1].id;
+          this.lastKey[options.table] = data[data.length - 1].id;
           data.pop();
         }
         return data;
@@ -194,15 +225,44 @@ export class QueryService {
     if(options.realtime){
       if(options.where.length && options.limit){
         let where = new Where(options.where[0],dbFirestore);
-        return this.afs.collection('/'+options.table,res=>res.where(where.key,"==",where.value).limit(options.limit)).valueChanges();
+        return this.afs.collection('/'+options.table,res=>res.where(where.key,"==",where.value).limit(options.limit)).snapshotChanges().map(items=>{
+          return items.map(item=>{
+            return{
+              ...item.payload.doc.data(),
+              id:item.payload.doc.id,
+            }
+          })
+        });
       }else if(!options.where.length && options.limit){
-        return this.afs.collection('/'+options.table,res=>res.limit(options.limit)).valueChanges();
+        return this.afs.collection('/'+options.table,res=>res.limit(options.limit)).snapshotChanges().map(items=>{
+          return items.map(item=>{
+            return{
+              ...item.payload.doc.data(),
+              id:item.payload.doc.id,
+            }
+          })
+        });
       }else if(options.where.length && !options.limit){
         let where = new Where(options.where[0],dbFirestore);
-        return this.afs.collection('/'+options.table,res=>res.where(where.key,"==",where.value)).valueChanges();
+        return this.afs.collection('/'+options.table,res=>res.where(where.key,"==",where.value)).snapshotChanges().map(items=>{
+          return items.map(item=>{
+            return{
+              ...item.payload.doc.data(),
+              id:item.payload.doc.id,
+            }
+          })
+        });
       }
-      return this.af.list('/'+options.table).valueChanges();
+      return this.afs.collection(options.table).snapshotChanges().map(items=>{
+        return items.map(item=>{
+          return{
+            ...item.payload.doc.data(),
+            id:item.payload.doc.id,
+          }
+        })
+      });
     }
+    
 
     let loader = this.loadingCrtl.create();
     let query;
@@ -219,7 +279,6 @@ export class QueryService {
       }else{
         query = this.afs.firestore.collection(options.table);
       }
-
       if(options.where.length){
         options.where.forEach(where=>{
           where = new Where(where,dbFirestore);
@@ -230,7 +289,13 @@ export class QueryService {
         query = query.limit(options.limit);
       }
       if(options.page && options.page > 1){
-        query = query.startAfter(this.key);
+        if(options.where){
+          let where = new Where(options.where[0],dbFirestore);
+          query = query.orderBy(where.key);
+        }else{
+          query = query.orderBy("id")
+        }
+        query = query.startAfter(this.lastKey[options.table]);
       }
 
       query = await query.get();
@@ -246,7 +311,7 @@ export class QueryService {
           data.push(array);
         });
         if(options.page && data.length){
-          this.key =  data[data.length - 1].id;
+          this.lastKey[options.table] =  data[data.length - 1].id;
         }
         await loader.dismiss();
         return data;
@@ -288,7 +353,7 @@ export class QueryService {
         body.append("lang_code",options.lang_code);
         body.append('ref',options.ref);
         body.append('database',this.getDatabase());
-        console.log("IMAGE",options.data['image']);
+        //console.log("IMAGE",options.data['image']);
         if(options.data['image'].name){
           body.append("image", options.data['image'], options.data['image'].name);
         }

@@ -10,6 +10,8 @@ export { UpdateService } from './providers/update-service';
 export { NgProvModule } from './ng-prov.module';
 export { StreamService } from './providers/stream-service';
 export { table,dbFirebase,dbMysql,dbFirestore } from './providers/interface';
+export { Options,Query } from './providers/query-service';
+
 
 export { WidgetClock  } from './widget/clock';
 export { WidgetSite } from './widget/site';
