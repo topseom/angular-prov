@@ -133,47 +133,44 @@ export class QueryService {
       options.table = options.table+"/"+options.lang_code;
     }
     if(options.realtime){
-      if(options.where.length && options.limit){
-        let where = new Where(options.where[0]);
-        return this.af.list(options.table,res=>res.orderByChild(where.key).equalTo(where.value).limitToFirst(options.limit)).snapshotChanges().map(items=>{
-          return items.map(item=>{
-            return {
-              ...item.payload.val(),
-              id:item.payload.key
-            }
-          });
-        });
-      }else if(!options.where.length && options.limit){
-        return this.af.list(options.table,res=>res.limitToFirst(options.limit)).snapshotChanges().map(items=>{
-          return items.map(item=>{
-            return {
-              ...item.payload.val(),
-              id:item.payload.key
-            }
-          });
-        });
-      }else if(options.where.length && !options.limit){
+      if(options.type == "object"){
         
-        let where = new Where(options.where[0]);
-        return this.af.list(options.table,res=>res.orderByChild(where.key).equalTo(where.value)).snapshotChanges().map(items=>{
-          return items.map(item=>{
-            return {
-              ...item.payload.val(),
-              id:item.payload.key
-            }
-          });
-        });
-      }
-      return this.af.list(options.table).snapshotChanges().map(items=>{
-        return items.map(item=>{
-          return {
+        return this.af.object(options.table).snapshotChanges().map(item=>{
+          return{
             ...item.payload.val(),
             id:item.payload.key
           }
         });
-      });
+
+      }else{
+
+        let filterOptions = {
+          where:options.where,
+          limit:options.limit
+        }
+        let filterFunction = (res,filterOptions)=>{
+          if(filterOptions.where && filterOptions.where.length){
+            let where = new Where(options.where[0]);
+            res = res.orderByChild(where.key).equalTo(where.value);
+          }
+          if(filterOptions.limit){
+            res = res.limitToFirst(filterOptions.limit);
+          }
+          return res;
+        }
+        return this.af.list(options.table,res=>filterFunction(res,filterOptions)).snapshotChanges().map(items=>{
+          return items.map(item=>{
+            return {
+              ...item.payload.val(),
+              id:item.payload.key
+            }
+          });
+        }); 
+
+      }
+
     }
-    //console.log("5");
+    
 
     let loader = this.loadingCrtl.create();
     if(options.loading){
@@ -214,7 +211,8 @@ export class QueryService {
         return data;
       }
     }
-    return Promise.reject({message:"not found data",status:404});
+    return null;
+    //return Promise.reject({message:"not found data",status:404});
   }
   //Firestore
   async firestore(options:Options){
@@ -223,46 +221,42 @@ export class QueryService {
       options.table = options.table+"_"+options.lang_code;
     }
     if(options.realtime){
-      if(options.where.length && options.limit){
-        let where = new Where(options.where[0],dbFirestore);
-        return this.afs.collection('/'+options.table,res=>res.where(where.key,"==",where.value).limit(options.limit)).snapshotChanges().map(items=>{
-          return items.map(item=>{
-            return{
-              ...item.payload.doc.data(),
-              id:item.payload.doc.id,
-            }
-          })
-        });
-      }else if(!options.where.length && options.limit){
-        return this.afs.collection('/'+options.table,res=>res.limit(options.limit)).snapshotChanges().map(items=>{
-          return items.map(item=>{
-            return{
-              ...item.payload.doc.data(),
-              id:item.payload.doc.id,
-            }
-          })
-        });
-      }else if(options.where.length && !options.limit){
-        let where = new Where(options.where[0],dbFirestore);
-        return this.afs.collection('/'+options.table,res=>res.where(where.key,"==",where.value)).snapshotChanges().map(items=>{
-          return items.map(item=>{
-            return{
-              ...item.payload.doc.data(),
-              id:item.payload.doc.id,
-            }
-          })
-        });
-      }
-      return this.afs.collection(options.table).snapshotChanges().map(items=>{
-        return items.map(item=>{
+      if(options.type == 'object'){
+
+        return this.afs.doc(options.table).snapshotChanges().map(item=>{
           return{
-            ...item.payload.doc.data(),
-            id:item.payload.doc.id,
+            ...item.payload.data(),
+            id:item.payload.id
           }
-        })
-      });
+        });
+
+      }else{
+
+        let filterOptions = {
+          where:options.where,
+          limit:options.limit
+        }
+        let filterFunction = (res,filterOptions)=>{
+          if(filterOptions.where && filterOptions.where.length){
+            let where = new Where(options.where[0],dbFirestore);
+            res = res.where(where.key,"==",where.value);
+          }
+          if(filterOptions.limit){
+            res = res.limit(filterOptions.limit);
+          }
+          return res;
+        }
+        return this.afs.collection(options.table,((res)=>filterFunction(res,filterOptions))).snapshotChanges().map(items=>{
+          return items.map(item=>{
+            return{
+              ...item.payload.doc.data(),
+              id:item.payload.doc.id
+            }
+          })
+        });  
+
+      }
     }
-    
 
     let loader = this.loadingCrtl.create();
     let query;
@@ -317,7 +311,8 @@ export class QueryService {
         return data;
       }
       await loader.dismiss();
-      return Promise.reject({message:"not found data",status:404});
+      return null;
+      //return Promise.reject({message:"not found data",status:404});
     }catch(e){
       await loader.dismiss();
       return Promise.reject({message:e,status:400});

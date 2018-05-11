@@ -57,11 +57,11 @@ export class InsertService{
 			if(options.method == "post"){
 				await this.af.object(options.ref+"/"+options.table+'/'+options.data['id']).set(options.data);
 				await loader.dismiss();
-				return 1;
+				return { id:options.data['id'] };
 			}else if(options.method == "push"){
-				await this.af.list(options.ref+"/"+options.table).push(options.data);
+				let callback = await this.af.list(options.ref+"/"+options.table).push(options.data);
 				await loader.dismiss();
-				return 1;
+				return { id:callback.key };
 			}
 			await loader.dismiss();
 			return Promise.reject({message:"not found method api firebase to get data!",status:404});
@@ -79,11 +79,11 @@ export class InsertService{
 		if(options.method == "post"){
 			await this.afs.doc(options.ref+"/"+options.table+'/'+this.lists+'/'+options.data['id']).set(options.data);
 			await loader.dismiss();
-			return 1;
+			return { id:options.data['id'] };
 		}else if(options.method == "push"){
-			await this.afs.collection(options.ref+"/"+options.table+this.lists).add(options.data);
+			let callback = await this.afs.collection(options.ref+"/"+options.table+this.lists).add(options.data);
 			await loader.dismiss();
-			return 1;
+			return { id:callback.id };
 		}
 		await loader.dismiss();
 		return Promise.reject({message:"not found method api firestore to get data!",status:404});

@@ -49,7 +49,10 @@ export class UpdateService{
 		if(options.loading){
       		loader.present();
 		}
-		await this.af.object(options.ref+"/"+options.table+'/'+options.data['id']).update(options.data);
+		let clone = JSON.parse(JSON.stringify(options.data));
+		delete options.data['id'];
+		console.log("CLONE",clone);
+		await this.af.object(options.ref+"/"+options.table+'/'+clone['id']).update(options.data);
 		await loader.dismiss();
 		return 1;
 	}
@@ -59,7 +62,10 @@ export class UpdateService{
 		if(options.loading){
       		loader.present();
 		}
-		await this.afs.doc(options.ref+"/"+options.table+this.lists+'/'+options.data['id']).update(options.data);
+		let clone = JSON.parse(JSON.stringify(options.data));
+		delete options.data['id'];
+		console.log("CLONE",clone);
+		await this.afs.doc(options.ref+"/"+options.table+this.lists+'/'+clone['id']).update(options.data);
 		await loader.dismiss();
 		return 1;
 	}
