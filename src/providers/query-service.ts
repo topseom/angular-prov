@@ -222,12 +222,19 @@ export class QueryService {
     }
     if(options.realtime){
       if(options.type == 'object'){
-
-        return this.afs.doc(options.table).snapshotChanges().map(item=>{
-          return{
-            ...item.payload.data(),
-            id:item.payload.id
+        let tb = options.table.split("/");
+        let index = tb[tb.length - 2];
+        tb.splice(tb.length - 2,1);
+        options.table = tb.join("/");
+        return this.afs.doc(options.table+'/'+index).snapshotChanges().map(item=>{
+          //console.log("HEYYYY22");
+          if(item.payload.exists){
+            return{
+              ...item.payload.data(),
+              id:item.payload.id
+            }
           }
+          return null;
         });
 
       }else{
@@ -296,6 +303,11 @@ export class QueryService {
       
       if(query){
         if(options.type == "object"){
+          console.log("HEYYYYYYY EDIT1");
+          if(!query.exists){
+            await loader.dismiss();
+            return null;
+          }
           await loader.dismiss();
           return query.data();
         }

@@ -77,7 +77,7 @@ export class InsertService{
       		loader.present();
 		}
 		if(options.method == "post"){
-			await this.afs.doc(options.ref+"/"+options.table+'/'+this.lists+'/'+options.data['id']).set(options.data);
+			await this.afs.doc(options.ref+"/"+options.table+this.lists+'/'+options.data['id']).set(options.data);
 			await loader.dismiss();
 			return { id:options.data['id'] };
 		}else if(options.method == "push"){
