@@ -65,7 +65,12 @@ export class UpdateService{
 		let clone = JSON.parse(JSON.stringify(options.data));
 		delete options.data['id'];
 		console.log("CLONE",clone);
-		await this.afs.doc(options.ref+"/"+options.table+this.lists+'/'+clone['id']).update(options.data);
+		let data = await this.afs.firestore.doc(options.ref+"/"+options.table+this.lists+'/'+clone['id']).get();
+		if(!data.exists && options.upsert){
+			await data.ref.set(options.data);
+		}else{
+			await data.ref.update(options.data);
+		}
 		await loader.dismiss();
 		return 1;
 	}

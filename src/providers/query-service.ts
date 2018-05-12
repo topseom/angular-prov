@@ -64,10 +64,12 @@ export class Options{
   other_data={};
   other_table:string;
   upload:boolean;
-  constructor({table="",ref="",loading=false,upload=false,lang_code="",lang=false,database="",other_data={},other_table="",data={},lastkey="",method="",api="",api_type="",api_version="",realtime=false,limit=0,page=0,where=[{key:"",value:""}],orderBy="",type="",table_path=""}={}){
+  upsert:boolean;
+  withKey:boolean;
+  constructor({table="",ref="",loading=false,upload=false,upsert=true,withKey=true,lang_code="",lang=false,database="",other_data={},other_table="",data={},lastkey="",method="",api="",api_type="",api_version="",realtime=false,limit=0,page=0,where=[{key:"",value:""}],orderBy="",type="",table_path=""}={}){
     this.table = table,this.ref = ref,this.loading=loading,this.realtime=realtime,this.page=page,this.where=where[0].key != ""?where:[],this.limit=limit,this.orderBy=orderBy,this.lastkey=lastkey,this.type=type,this.table_path = table_path,this.method=method,this.api=api,this.data=data,this.api_type=api_type,this.api_version=api_version;
     this.lang = lang,this.lang_code=lang_code,this.database = database;this.other_data = other_data;this.other_table = other_table;
-    this.upload = upload;
+    this.upload = upload;this.upsert = upsert;this.withKey = withKey;
   }
 }
 
@@ -132,14 +134,32 @@ export class QueryService {
     if(options.lang){
       options.table = options.table+"/"+options.lang_code;
     }
+    
     if(options.realtime){
+      let generateData = (item,withKey)=>{
+        console.log("withkey2",withKey);
+        if(item.payload.exists){
+          if(withKey){
+            console.log("withkey3",{...item.payload.val(),
+              id:item.payload.key});
+            return{
+              ...item.payload.val(),
+              id:item.payload.key
+            }
+          }
+          console.log("non-withkey1",item.payload.val());
+          return item.payload.val();
+        }
+        console.log('not found exists');
+        return null;
+      }
+
       if(options.type == "object"){
         
         return this.af.object(options.table).snapshotChanges().map(item=>{
-          return{
-            ...item.payload.val(),
-            id:item.payload.key
-          }
+          console.log("item1",item);
+          console.log("withkey1",options.withKey);
+          return generateData(item,options.withKey);
         });
 
       }else{
@@ -160,10 +180,7 @@ export class QueryService {
         }
         return this.af.list(options.table,res=>filterFunction(res,filterOptions)).snapshotChanges().map(items=>{
           return items.map(item=>{
-            return {
-              ...item.payload.val(),
-              id:item.payload.key
-            }
+            return generateData(item,options.withKey);
           });
         }); 
 
@@ -221,6 +238,19 @@ export class QueryService {
       options.table = options.table+"_"+options.lang_code;
     }
     if(options.realtime){
+      let generateData = (item,withKey)=>{
+        if(item.payload.exists){
+          if(withKey){
+            return{
+              ...item.payload.data(),
+              id:item.payload.id
+            }
+          }
+          return item.payload.data();
+        }
+        return null;
+      }
+
       if(options.type == 'object'){
         let tb = options.table.split("/");
         let index = tb[tb.length - 2];
@@ -228,13 +258,7 @@ export class QueryService {
         options.table = tb.join("/");
         return this.afs.doc(options.table+'/'+index).snapshotChanges().map(item=>{
           //console.log("HEYYYY22");
-          if(item.payload.exists){
-            return{
-              ...item.payload.data(),
-              id:item.payload.id
-            }
-          }
-          return null;
+          return generateData(item,options.withKey);
         });
 
       }else{
@@ -255,10 +279,7 @@ export class QueryService {
         }
         return this.afs.collection(options.table,((res)=>filterFunction(res,filterOptions))).snapshotChanges().map(items=>{
           return items.map(item=>{
-            return{
-              ...item.payload.doc.data(),
-              id:item.payload.doc.id
-            }
+            return generateData(item,options.withKey);
           })
         });  
 
